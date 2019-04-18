@@ -1,6 +1,6 @@
 import server from './server';
 import MockCaseServer from './MCS';
-
+import { MockCase } from './MCS';
 server.use((context, next) => { // 加载参数
     context.state = {
         ...context.query,
@@ -9,18 +9,22 @@ server.use((context, next) => { // 加载参数
     next();
 });
 
-server.use(async (context, next) => { // 名中一个开始的 case
+server.use(async (context, next: any) => { // 名中一个开始的 case
     if (context.path === '/changeCase') {
         const {
             caseId
         } = context.state;
         // 查找 case
-        
+        const case: any = MockCaseServer.findCaseByName(caseId);
+        if (case) {
+            
+        }
 
     }
 
     next();
-    
-    
 });
+server.use(async (context, next) => {
+    
+})
 server.listen(8080);

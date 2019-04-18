@@ -3,7 +3,7 @@ interface Change {
     change(query: object, originState: object): void;
     data(query: object, changedState: object): object;
 }
-class MockCase {
+export class MockCase {
     /** 默认的 **state** 对象 */
     default: object | undefined;
 
@@ -34,6 +34,20 @@ class MockCaseServer extends MockCase {
 
     static loadCases: (cases: MockCase[]) => void = (cases) => {
         MockCaseServer.matches = cases;
+    }
+    static currentCase: MockCase;
+    static setCurrentCase: (c: MockCase) => MockCase = (c) => {
+        return MockCaseServer.currentCase = c;
+    }
+
+    static findCaseByName: (name: string) => MockCase | void = (n) => {
+        if (!MockCaseServer.matches || !MockCaseServer.matches.length) {
+            return;
+        }
+        const re = MockCaseServer.matches.find((item: MockCase) => item.name === n);
+        if (re) {
+            return MockCaseServer.setCurrentCase(re);
+        }
     }
 }
 
