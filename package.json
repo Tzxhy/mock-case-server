@@ -1,0 +1,22 @@
+{
+  "name": "mock-case-server",
+  "version": "1.0.0",
+  "description": "该mock-server可配合airtest进行测试使用，为有状态的请求提供有状态的mock数据（后面称为 **data** ）。",
+  "main": "output/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "types": "types",
+  "bin": {
+    "mcs": "bin/mcs"
+  },
+  "dependencies": {
+    "@types/koa": "^2.0.48",
+    "@types/koa-bodyparser": "^4.2.2",
+    "koa": "^2.7.0",
+    "koa-bodyparser": "^4.2.1"
+  }
+}
