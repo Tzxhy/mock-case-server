@@ -1,23 +1,30 @@
 {
   "name": "mock-case-server",
-  "version": "1.0.0",
-  "description": "该mock-server可配合airtest进行测试使用，为有状态的请求提供有状态的mock数据（后面称为 **data** ）。",
-  "main": "output/index.js",
+  "version": "0.0.1-alpha",
+  "description": "provide stateful mock data for tests",
+  "main": "output/MCS.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha tests",
+    "dev": "tsc -p . -w"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "types": "types",
+  "keywords": ["mock", "stateful", "http", "server"],
+  "author": "tzxhy",
+  "license": "MIT",
   "bin": {
     "mcs": "bin/mcs"
   },
   "dependencies": {
     "@types/koa": "^2.0.48",
     "@types/koa-bodyparser": "^4.2.2",
+    "chalk": "^2.4.2",
     "koa": "^2.7.0",
     "koa-bodyparser": "^4.2.1",
-    "typescript": "^3.4.3"
+    "mocha": "^6.1.4",
+    "typescript": "^3.4.3",
+    "url-pattern": "^1.0.3"
+  },
+  "devDependencies": {
+    "axios": "^0.18.0",
+    "commander": "^2.20.0"
   }
 }

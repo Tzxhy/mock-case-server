@@ -37,14 +37,105 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
-var server_1 = __importDefault(require("./server"));
-server_1.default.use(function (context, next) { return __awaiter(_this, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        console.log(context);
-        debugger;
-        return [2 /*return*/];
+var path = require("path");
+var childProcess = require("child_process");
+var chalk_1 = __importDefault(require("chalk"));
+var fs_1 = __importDefault(require("fs"));
+var execSync = function (command) { return childProcess.execSync(command, {
+    stdio: 'inherit',
+}); };
+var cwd = process.cwd();
+function cpTemplates() {
+    execSync("cp -r " + __dirname + "/templates/. " + cwd); // 使用/. 不要/*，后者不拷贝隐藏文件、夹
+}
+function chooseCpTemplates() {
+    return __awaiter(this, void 0, void 0, function () {
+        var dir, readline, rl_1;
+        return __generator(this, function (_a) {
+            dir = cwd + "/";
+            try {
+                fs_1.default.accessSync(path.join(dir, '.mcs.config'), fs_1.default.constants.F_OK);
+                readline = require('readline');
+                rl_1 = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                return [2 /*return*/, new Promise(function (res) {
+                        rl_1.question(chalk_1.default.red('You\'re already inititialized this project. Override? [y or n]: '), function (answer) {
+                            if (answer === 'y' || answer === 'Y') {
+                                cpTemplates();
+                                res(true);
+                            }
+                            else {
+                                console.log('Try use \'mcs start\' to start mock server, or clear the dir and run \'mcs init\'');
+                                res(false);
+                            }
+                            rl_1.close();
+                        });
+                    })];
+            }
+            catch (e) {
+                console.log('error: ', e);
+                cpTemplates();
+                return [2 /*return*/, true];
+            }
+            return [2 /*return*/];
+        });
     });
-}); });
-server_1.default.listen(8080);
+}
+/**
+ * command: mcs init
+ * @param port http mock server port
+ */
+function initServer(port) {
+    return __awaiter(this, void 0, void 0, function () {
+        var result;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    // make cases dir
+                    console.log(chalk_1.default.blue('Prepare to init some dirs...'));
+                    return [4 /*yield*/, chooseCpTemplates()];
+                case 1:
+                    result = _a.sent();
+                    if (!result) {
+                        return [2 /*return*/];
+                    }
+                    console.log(chalk_1.default.green("Now init a npm project..."));
+                    execSync("npm init -y  > /dev/null");
+                    console.log(chalk_1.default.bgCyan.black('Init mock-case-server finished. Now you can write your own cases and then run \'mcs start\'!'));
+                    // 写配置文件
+                    writeConfig({
+                        port: port,
+                    });
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+exports.initServer = initServer;
+function writeConfig(config) {
+    var configPath = path.resolve('.mcs.config');
+    var file = fs_1.default.readFileSync(configPath, {
+        encoding: 'utf8',
+    });
+    var keys = Object.keys(config);
+    keys.forEach(function (key) {
+        file = file.replace("{{" + key + "}}", config[key]);
+    });
+    fs_1.default.writeFileSync(configPath, file);
+}
+var server_1 = __importDefault(require("./server"));
+var log_1 = require("./log");
+var utils_1 = require("./utils");
+/** command: mcs start */
+function startServer() {
+    require(cwd + "/index"); // 加载 case
+    var port = utils_1.getEnvKeyValue('port');
+    var logInfo = new Date() + ': Start server at http://localhost:' + port;
+    log_1.log.info(logInfo);
+    console.log(logInfo);
+    server_1.default.listen(port);
+}
+exports.startServer = startServer;

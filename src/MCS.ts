@@ -1,54 +1,103 @@
-interface Change {
-    path: string | RegExp,
-    change(query: object, originState: object): void;
+import UrlPattern from 'url-pattern';
+import { groupName } from './utils';
+
+export interface Change {
+    path: string | UrlPattern,
+    change(query: object, originState: object): object;
     data(query: object, changedState: object): object;
 }
+interface CaseDefaultObj {
+    defaultState: object;
+    description: string;
+}
+
 export class MockCase {
-    /** 默认的 **state** 对象 */
-    default: object | undefined;
 
     /** 匹配该case的所有路径 */
-    matches: Change[] | undefined;
+    matches: Change[];
+    description: string;
+    /** 默认的 **state** 对象 */
+    defaultState: object;
 
     /** case的唯一名称 */
-    constructor(public name: string) {}
+    constructor(public name: string, defaultObj: CaseDefaultObj = {
+        defaultState: {},
+        description: '',
+    }) {
+        this.defaultState = defaultObj.defaultState;
+        this.description = defaultObj.description;
+        this.matches = [];
+    }
 
     /** 添加一条匹配规则 */
-    addChange(change: Change) {
+    addChange(change: Change): MockCase {
         if (this.matches) {
             this.matches.push(change);
         } else {
             this.matches = [change];
         }
+        return this;
     }
 }
-class MockCaseServer extends MockCase {
-    static default: object;
 
-    static Case: (name: string) => MockCase = function(n) {
-        return new MockCase(n);
+
+class MockCaseServer {
+    // static default: object = {};
+
+    static createCase: (name: string, defaultObj: CaseDefaultObj) => MockCase = function(n, defaultObj) {
+        return new MockCase(n, defaultObj);
     }
 
     /** 匹配该case的所有路径 */
-    static matches: MockCase[] | undefined;
+    static cases: MockCase[] | undefined;
 
     static loadCases: (cases: MockCase[]) => void = (cases) => {
-        MockCaseServer.matches = cases;
+        // check
+        const caseIds: any = [];
+        cases.forEach(caseItem => caseIds.push(caseItem.name));
+        const map: any = groupName(caseIds);
+        for (const key in map) {
+            if (map[key] !== 1) {
+                throw new Error(`Found no uniq caseId: ${key}!`);
+            }
+        }
+        MockCaseServer.cases = cases;
     }
     static currentCase: MockCase;
     static setCurrentCase: (c: MockCase) => MockCase = (c) => {
-        return MockCaseServer.currentCase = c;
+        MockCaseServer.currentCase = c;
+        return c;
     }
 
-    static findCaseByName: (name: string) => MockCase | void = (n) => {
-        if (!MockCaseServer.matches || !MockCaseServer.matches.length) {
+    // static matchs: Change[];
+    // static addChange: (change: Change) => void = (c) => {
+    //     if (MockCaseServer.matchs) {
+    //         MockCaseServer.matchs.push(c);
+    //     } else {
+    //         MockCaseServer.matchs = [c];
+    //     }
+    // }
+
+    static findCaseByName: (name: string) => MockCase | undefined = (n) => {
+        if (!MockCaseServer.cases || !MockCaseServer.cases.length) {
             return;
         }
-        const re = MockCaseServer.matches.find((item: MockCase) => item.name === n);
+        const re = MockCaseServer.cases.find((item: MockCase) => item.name === n);
         if (re) {
             return MockCaseServer.setCurrentCase(re);
         }
+        return;
     }
+
+    static state: object;
+    static setState: (state: object) => void = (s) => {
+        MockCaseServer.state = s;
+    }
+
 }
+export {
+    UrlPattern
+}
+
 
 export default MockCaseServer;

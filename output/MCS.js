@@ -1,22 +1,22 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+var url_pattern_1 = __importDefault(require("url-pattern"));
+exports.UrlPattern = url_pattern_1.default;
+var utils_1 = require("./utils");
 var MockCase = /** @class */ (function () {
     /** case的唯一名称 */
-    function MockCase(name) {
+    function MockCase(name, defaultObj) {
+        if (defaultObj === void 0) { defaultObj = {
+            defaultState: {},
+            description: '',
+        }; }
         this.name = name;
+        this.defaultState = defaultObj.defaultState;
+        this.description = defaultObj.description;
+        this.matches = [];
     }
     /** 添加一条匹配规则 */
     MockCase.prototype.addChange = function (change) {
@@ -26,20 +26,55 @@ var MockCase = /** @class */ (function () {
         else {
             this.matches = [change];
         }
+        return this;
     };
     return MockCase;
 }());
-var MockCaseServer = /** @class */ (function (_super) {
-    __extends(MockCaseServer, _super);
+exports.MockCase = MockCase;
+var MockCaseServer = /** @class */ (function () {
     function MockCaseServer() {
-        return _super !== null && _super.apply(this, arguments) || this;
     }
-    MockCaseServer.Case = function (n) {
-        return new MockCase(n);
+    // static default: object = {};
+    MockCaseServer.createCase = function (n, defaultObj) {
+        return new MockCase(n, defaultObj);
     };
     MockCaseServer.loadCases = function (cases) {
-        MockCaseServer.matches = cases;
+        // check
+        var caseIds = [];
+        cases.forEach(function (caseItem) { return caseIds.push(caseItem.name); });
+        var map = utils_1.groupName(caseIds);
+        for (var key in map) {
+            if (map[key] !== 1) {
+                throw new Error("Found no uniq caseId: " + key + "!");
+            }
+        }
+        MockCaseServer.cases = cases;
+    };
+    MockCaseServer.setCurrentCase = function (c) {
+        MockCaseServer.currentCase = c;
+        return c;
+    };
+    // static matchs: Change[];
+    // static addChange: (change: Change) => void = (c) => {
+    //     if (MockCaseServer.matchs) {
+    //         MockCaseServer.matchs.push(c);
+    //     } else {
+    //         MockCaseServer.matchs = [c];
+    //     }
+    // }
+    MockCaseServer.findCaseByName = function (n) {
+        if (!MockCaseServer.cases || !MockCaseServer.cases.length) {
+            return;
+        }
+        var re = MockCaseServer.cases.find(function (item) { return item.name === n; });
+        if (re) {
+            return MockCaseServer.setCurrentCase(re);
+        }
+        return;
+    };
+    MockCaseServer.setState = function (s) {
+        MockCaseServer.state = s;
     };
     return MockCaseServer;
-}(MockCase));
+}());
 exports.default = MockCaseServer;

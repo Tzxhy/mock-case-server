@@ -1,3 +1,32 @@
 #!/usr/bin/env node
 
-console.log('start');
+const program = require('commander');
+let port = 8080;
+
+const {
+    initServer,
+    startServer,
+} = require('../output/index');
+
+program
+    .version('0.0.1-alpha', '-v, --version')
+
+program
+    .command('init')
+    .description('initial a mock-case-server dir')
+    .option('-p, --port [port]', 'set a fixed port for http, default is 8080')
+    .action(function (options) {
+        if (options.port) {
+            port = Number(options.port);
+        }
+        initServer(port);
+    })
+
+program
+    .command('start')
+    .description('start a mock-case-server')
+    .action(() => {
+        startServer();
+    })
+
+program.parse(process.argv);
