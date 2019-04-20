@@ -101,3 +101,7 @@ ___
 2. you are free to send API you set in your changes.
 3. Send another changeCase request like step 1 if you wanna another case. Each case is run in its own space, and not affect other cases' state.
 
+## Q&A
+- Q: run 'mcs start', tips: Error: Cannot find module 'mock-case-server'?
+- A: make sure your NODE_PATH right. (`npm root -g` shows global root)
+

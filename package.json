@@ -1,6 +1,6 @@
 {
   "name": "mock-case-server",
-  "version": "0.0.1-alpha",
+  "version": "0.0.3-alpha",
   "description": "provide stateful mock data for tests",
   "main": "output/MCS.js",
   "scripts": {
@@ -21,10 +21,10 @@
     "koa-bodyparser": "^4.2.1",
     "mocha": "^6.1.4",
     "typescript": "^3.4.3",
-    "url-pattern": "^1.0.3"
+    "url-pattern": "^1.0.3",
+    "commander": "^2.20.0"
   },
   "devDependencies": {
-    "axios": "^0.18.0",
-    "commander": "^2.20.0"
+    "axios": "^0.18.0"
   }
 }

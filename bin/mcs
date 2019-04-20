@@ -9,7 +9,7 @@ const {
 } = require('../output/index');
 
 program
-    .version('0.0.1-alpha', '-v, --version')
+    .version('0.0.3-alpha', '-v, --version')
 
 program
     .command('init')
