@@ -105,3 +105,10 @@ ___
 - Q: run 'mcs start', tips: Error: Cannot find module 'mock-case-server'?
 - A: make sure your NODE_PATH right. (`npm root -g` shows global root)
 
+## changeLog
+- 0.0.4
+    - 如果只有一个 case，则不需要设置 caseId;
+    - 增加 mcs new 指令，添加一个 case.js 模板文件;
+    - 去除根目录下 index.js 入口文件，只需要 cases 文件夹下每个文件默认导出一个 case 实例即可。
+    - 增加测试用例。
+    - fix: 去除创建项目时无用的 console.log

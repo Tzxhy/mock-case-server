@@ -5,4 +5,5 @@
 declare function initServer(port: number): Promise<void>;
 /** command: mcs start */
 declare function startServer(): void;
-export { initServer, startServer, };
+declare function newCase(name: string): void;
+export { initServer, startServer, newCase, };

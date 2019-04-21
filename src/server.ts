@@ -27,8 +27,10 @@ server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及�
         const nowCase: MockCase | undefined = MockCaseServer.findCaseByName(caseId);
         
         if (!nowCase) { // 未找到该 case，报错
-            ctx.body = `Not found caseId ${caseId}.`;
-            ctx.status = 404;
+            ctx.body = {
+                code: 404,
+                msg: `Not found caseId ${caseId}.`,
+            };
             return;
         } else { // 初始化状态
             changeCase(caseId);
@@ -96,7 +98,7 @@ server.use((ctx: ParameterizedContext) => {
     } = ctx;
     ctx.body = {
         code: 404,
-        msg: `Please add CHANGE '${path}' to your config or check your request.`,
+        msg: `Please add CHANGE '${path}' into CASE \`${MockCaseServer.currentCase.name}\` or check your request.`,
     };
     return;
 })

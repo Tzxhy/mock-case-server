@@ -1,19 +1,18 @@
 const Case = require('mock-case-server').MockCase;
 const UrlPattern = require('mock-case-server').UrlPattern;
 
-const myCase = new Case('case1', {
+// you may need to change case name.
+const myCase = new Case('{{caseName}}', {
     defaultState: { // used to initial this case origin state
-        login: false,
-        money: 0,
+
     },
-    description: 'switch login state', // description. uesd in log
+    description: '', // description. uesd in log
 });
 myCase.addChange({
-    path: '/changeLogin',
+    path: '/change1',
     change(query, originState) {
         // filed 'query' cantains url params and body params
         return {
-            login: !originState.login,
         };
     },
     data(query, changedState) {
@@ -23,24 +22,17 @@ myCase.addChange({
     }
 });
 myCase.addChange({
-    path: new UrlPattern('/addMoney/:money'),
+    path: new UrlPattern('/makeMoney(/:money)'),
     change(query, originState) {
         // filed 'query' also cantains pattern field
-        const {
-            pattern: {
-                money, // all fileds are type of string,
-            }
-        } = query;
         return {
-            money: originState.money + Number(money), // update money
         };
     },
     data(query, changedState) {
         return {
-            money: changedState.money,
         };
     }
 });
 
-
+// if you don't use this case, just comment out the next line.
 module.exports = myCase;

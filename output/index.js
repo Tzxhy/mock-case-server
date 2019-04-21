@@ -37,6 +37,13 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var path = require("path");
 var childProcess = require("child_process");
@@ -76,7 +83,6 @@ function chooseCpTemplates() {
                     })];
             }
             catch (e) {
-                console.log('error: ', e);
                 cpTemplates();
                 return [2 /*return*/, true];
             }
@@ -129,13 +135,53 @@ function writeConfig(config) {
 var server_1 = __importDefault(require("./server"));
 var log_1 = require("./log");
 var utils_1 = require("./utils");
+var MCS_1 = __importStar(require("./MCS"));
+function loadAllCases() {
+    var oldIndex = cwd + "/index.js";
+    try {
+        fs_1.default.accessSync(oldIndex, fs_1.default.constants.F_OK);
+        require(oldIndex);
+        console.log(chalk_1.default.green('Load all cases defined in index.js!'));
+    }
+    catch (e) { // no exists of old version's entry index.js
+        var requireAll = require('require-all');
+        var casesObj = requireAll(path.join(cwd, 'cases'));
+        var cases = Object.values(casesObj);
+        cases = cases.filter(function (item) { return item instanceof MCS_1.MockCase; }); // just load which export case
+        MCS_1.default.loadCases(cases);
+        console.log(chalk_1.default.green('Load all cases in ./cases!'));
+    }
+}
 /** command: mcs start */
 function startServer() {
-    require(cwd + "/index"); // 加载 case
+    loadAllCases(); // 加载 case
     var port = utils_1.getEnvKeyValue('port');
+    server_1.default.listen(port);
     var logInfo = new Date() + ': Start server at http://localhost:' + port;
     log_1.log.info(logInfo);
     console.log(logInfo);
-    server_1.default.listen(port);
+    console.log(chalk_1.default.blue.italic('You can look out the log.log file for detail...'));
 }
 exports.startServer = startServer;
+function newCase(name) {
+    var caseDir = path.resolve('cases');
+    var file = fs_1.default.readFileSync(path.resolve(__dirname, 'file-templates', 'case.template.js'), {
+        encoding: 'utf8',
+    });
+    file = file.replace('{{caseName}}', name);
+    var casePath = path.join(caseDir, name + '.js');
+    try {
+        fs_1.default.writeFileSync(casePath, file, {
+            encoding: 'utf8',
+            flag: 'wx',
+        });
+        console.log("Create " + casePath + " OK!");
+    }
+    catch (err) {
+        if (err.code === 'EEXIST') {
+            console.log(chalk_1.default.red("Error: " + casePath + " exists!"));
+            return;
+        }
+    }
+}
+exports.newCase = newCase;

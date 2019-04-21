@@ -6,10 +6,11 @@ let port = 8080;
 const {
     initServer,
     startServer,
+    newCase,
 } = require('../output/index');
 
 program
-    .version('0.0.3-alpha', '-v, --version')
+    .version('0.0.4', '-v, --version')
 
 program
     .command('init')
@@ -27,6 +28,13 @@ program
     .description('start a mock-case-server')
     .action(() => {
         startServer();
+    })
+
+program
+    .command('new <case-name>')
+    .description('new a mock case')
+    .action((name) => {
+        newCase(name || 'case');
     })
 
 program.parse(process.argv);

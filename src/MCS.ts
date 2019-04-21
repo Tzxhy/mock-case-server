@@ -62,6 +62,9 @@ class MockCaseServer {
             }
         }
         MockCaseServer.cases = cases;
+        if (cases.length === 1) { // if only one case, sets it as currentCase
+            MockCaseServer.setCurrentCase(cases[0]);
+        }
     }
     static currentCase: MockCase;
     static setCurrentCase: (c: MockCase) => MockCase = (c) => {
