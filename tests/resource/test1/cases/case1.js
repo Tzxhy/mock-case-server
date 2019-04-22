@@ -1,14 +1,14 @@
 const Case = require('mock-case-server').MockCase;
 const UrlPattern = require('mock-case-server').UrlPattern;
 
-const case1 = new Case('case1', {
+const myCase = new Case('case1', {
     defaultState: { // used to initial this case origin state
         login: false,
         money: 0,
     },
     description: 'switch login state', // description. uesd in log
 });
-case1.addChange({
+myCase.addChange({
     path: '/changeLogin',
     change(query, originState) {
         // filed 'query' cantains url params and body params
@@ -22,7 +22,7 @@ case1.addChange({
         };
     }
 });
-case1.addChange({
+myCase.addChange({
     path: new UrlPattern('/addMoney/:money'),
     change(query, originState) {
         // filed 'query' also cantains pattern field
@@ -43,4 +43,4 @@ case1.addChange({
 });
 
 
-module.exports = case1;
+module.exports = myCase;

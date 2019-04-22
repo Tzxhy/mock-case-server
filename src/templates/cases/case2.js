@@ -1,7 +1,7 @@
 const Case = require('mock-case-server').MockCase;
 const UrlPattern = require('mock-case-server').UrlPattern;
 
-const case2 = new Case('case2', {
+const myCase = new Case('case2', {
     defaultState: { // used to initial this case origin state
         name: 'test',
         money: 0,
@@ -10,7 +10,7 @@ const case2 = new Case('case2', {
     description: 'switch login state', // description. uesd in log
 });
 let reqTime = 0;
-case2.addChange({
+myCase.addChange({
     path: '/getName',
     change(query, originState) {
         reqTime++;
@@ -26,11 +26,11 @@ case2.addChange({
     data(query, changedState) {
         return {
             name: changedState.name,
-            shouldTip: changedState,
+            shouldTip: changedState.shouldTip,
         };
     }
 });
-case2.addChange({
+myCase.addChange({
     path: new UrlPattern('/sub(/:money)'),
     change(query, originState) {
         // filed 'query' also cantains pattern field
@@ -57,4 +57,4 @@ case2.addChange({
 });
 
 
-module.exports = case2;
+module.exports = myCase;

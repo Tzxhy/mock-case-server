@@ -35,7 +35,6 @@ async function chooseCpTemplates() {
             });
         })
     } catch (e) {
-        console.log('error: ', e)
         cpTemplates();
         return true;
     }
@@ -81,20 +80,64 @@ function writeConfig(config: any) {
 import server from './server';
 import { log } from './log';
 import { getEnvKeyValue } from './utils';
+import MockCaseServer, { MockCase } from './MCS';
+
+function loadAllCases() {
+    const oldIndex = `${cwd}/index.js`;
+    try {
+        fs.accessSync(oldIndex, fs.constants.F_OK);
+        require(oldIndex);
+        console.log(chalk.green('Load all cases defined in index.js!'));
+        
+    } catch (e) { // no exists of old version's entry index.js
+        const requireAll = require('require-all');
+        let casesObj = requireAll(path.join(cwd, 'cases'));
+
+        let cases: MockCase[] = Object.values(casesObj);
+        cases = cases.filter(item => item instanceof MockCase); // just load which export case
+        MockCaseServer.loadCases(cases);
+        console.log(chalk.green('Load all cases in ./cases!'));
+    }
+}
 
 /** command: mcs start */
 function startServer() {
 
-    require(`${cwd}/index`); // 加载 case
+    loadAllCases(); // 加载 case
     
     const port = getEnvKeyValue('port');
+    server.listen(port);
     const logInfo = new Date() + ': Start server at http://localhost:' + port;
     log.info(logInfo);
     console.log(logInfo);
-    server.listen(port);
+    console.log(chalk.blue.italic('You can look out the log.log file for detail...'));
+    
+
+}
+
+function newCase(name: string) {
+    const caseDir = path.resolve('cases');
+    let file = fs.readFileSync(path.resolve(__dirname, 'file-templates', 'case.template.js'), {
+        encoding: 'utf8',
+    });
+    file = file.replace('{{caseName}}', name);
+    const casePath = path.join(caseDir, name + '.js');
+    try {
+        fs.writeFileSync(casePath, file, {
+            encoding: 'utf8',
+            flag: 'wx',
+        });
+        console.log(`Create ${casePath} OK!`);
+    } catch (err) {
+        if (err.code === 'EEXIST') {
+            console.log(chalk.red(`Error: ${casePath} exists!`));
+            return;
+        }
+    }
 }
 
 export {
     initServer,
     startServer,
+    newCase,
 };

@@ -31,8 +31,10 @@ server.use(function (ctx, next) {
         var caseId = ctx.state.caseId;
         var nowCase = MCS_1.default.findCaseByName(caseId);
         if (!nowCase) { // 未找到该 case，报错
-            ctx.body = "Not found caseId " + caseId + ".";
-            ctx.status = 404;
+            ctx.body = {
+                code: 404,
+                msg: "Not found caseId " + caseId + ".",
+            };
             return;
         }
         else { // 初始化状态
@@ -80,7 +82,7 @@ server.use(function (ctx) {
     var path = ctx.path;
     ctx.body = {
         code: 404,
-        msg: "Please add CHANGE '" + path + "' to your config or check your request.",
+        msg: "Please add CHANGE '" + path + "' into CASE `" + MCS_1.default.currentCase.name + "` or check your request.",
     };
     return;
 });
