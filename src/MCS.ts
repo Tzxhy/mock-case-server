@@ -3,8 +3,9 @@ import { groupName } from './utils';
 
 export interface Change {
     path: string | UrlPattern,
-    change(query: object, originState: object): object;
+    change?(query: object, originState: object): object;
     data(query: object, changedState: object): object;
+    transferTo?: string; // For charles to map
 }
 interface CaseDefaultObj {
     defaultState: object;
@@ -64,6 +65,7 @@ class MockCaseServer {
         MockCaseServer.cases = cases;
         if (cases.length === 1) { // if only one case, sets it as currentCase
             MockCaseServer.setCurrentCase(cases[0]);
+            MockCaseServer.setState(cases[0].defaultState);
         }
     }
     static currentCase: MockCase;

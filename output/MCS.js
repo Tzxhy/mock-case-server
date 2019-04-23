@@ -51,6 +51,7 @@ var MockCaseServer = /** @class */ (function () {
         MockCaseServer.cases = cases;
         if (cases.length === 1) { // if only one case, sets it as currentCase
             MockCaseServer.setCurrentCase(cases[0]);
+            MockCaseServer.setState(cases[0].defaultState);
         }
     };
     MockCaseServer.setCurrentCase = function (c) {

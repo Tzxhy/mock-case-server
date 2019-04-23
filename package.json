@@ -1,10 +1,10 @@
 {
   "name": "mock-case-server",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "provide stateful mock data for tests",
   "main": "output/MCS.js",
   "scripts": {
-    "test": "mocha tests",
+    "test": "mocha tests -g 'one case'",
     "dev": "tsc -p . -w"
   },
   "keywords": [
@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Tzxhy/mock-case-server"
+    "url": "git+https://github.com/Tzxhy/mock-case-server.git"
   },
   "license": "MIT",
   "bin": {
@@ -33,7 +33,9 @@
     "koa": "^2.7.0",
     "koa-bodyparser": "^4.2.1",
     "require-all": "^3.0.0",
-    "url-pattern": "^1.0.3"
+    "url-pattern": "^1.0.3",
+    "watch": "^1.0.2",
+    "xml": "^1.0.1"
   },
   "devDependencies": {
     "axios": "^0.18.0",
@@ -41,5 +43,8 @@
     "@types/koa-bodyparser": "^4.2.2",
     "mocha": "^6.1.4",
     "typescript": "^3.4.3"
+  },
+  "directories": {
+    "test": "tests"
   }
 }

@@ -2,7 +2,7 @@ const Case = require('mock-case-server').MockCase;
 const UrlPattern = require('mock-case-server').UrlPattern;
 
 const myCase = new Case('case1', {
-    defaultState: { // used to initial this case origin state
+    defaultState: { // used to initialize this case's state
         login: false,
         money: 0,
     },
@@ -40,6 +40,23 @@ myCase.addChange({
             money: changedState.money,
         };
     }
+});
+
+// use existing json
+myCase.addChange({
+    path: '/for-test',
+    data() {
+        return {
+            ...require('../responses/for-test.json'),
+        };
+    },
+});
+
+// show case
+// just generate a map remote item.
+myCase.addChange({
+    path: '/charles-map',
+    transferTo: 'https://zh.wikipedia.org/zh-hans/%E5%AD%97%E8%8A%82%E8%B7%B3%E5%8A%A8',
 });
 
 

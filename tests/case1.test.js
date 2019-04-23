@@ -1,48 +1,50 @@
-const {startServer, killServer} = require('./common');
+const {startServer, killServer, initServerDir, clearServerDir} = require('./common');
 
 
 const assert = require('assert');
 const axios = require('axios');
-describe('normal test', function () {
-    describe('#request without set caseId', function () {
-        it('#1: should return 500', async function () {
-            const { data } = await axios.get('http://localhost:8080/wiredAPI');
-
-            assert.deepEqual(data, {
-                code: 500,
-                msg: 'Please set caseId before start case!'
-            }, '返回code不为500');
-        });
-        it('#2: should return 500', async function () {
-            const { data } = await axios.get('http://localhost:8080/changeLogin');
-
-            assert.deepEqual(data, {
-                code: 500,
-                msg: 'Please set caseId before start case!'
-            }, '返回code不为500');
-        });
-    });
-
-    describe('#request changeCase', function () {
-        it('#should change succeed', async function () {
-            const { data } = await axios.get('http://localhost:8080/changeCase?caseId=case1');
-
-            assert.deepEqual(data, {"code":0,"msg":"Ok, now use case1 for coming tests..."}, '成功');
-        });
-        it('#should change failed', async function () {
-            const randomStr = Math.random().toString(16).slice(2);
-            const { data } = await axios.get(`http://localhost:8080/changeCase?caseId=${randomStr}`);
-            assert.deepEqual(data, {"code":404,"msg":`Not found caseId ${randomStr}.`}, '失败提示');
-        });
-    });
-    beforeEach(async function() {
+describe('初始状态下测试(just one case)', function () {
+    before(() => {
+        initServerDir();
         return startServer();
     });
-    afterEach(function() {
+    after(() => {
+        clearServerDir();
         return killServer();
     });
+    
+    it('请求不存在的 api，code 应该是404', async function () {
+        const { data } = await axios.get('http://localhost:8080/wiredAPI');
+
+        assert.equal(data.code, 404, '返回code应该为404');
+    });
+    it('状态为真', async function () {
+        const { data } = await axios.get('http://localhost:8080/changeLogin');
+        assert.equal(data.login, true, '返回login应该为true');
+    });
+
+    it('#添加10', async function () {
+        const { data } = await axios.get('http://localhost:8080/addMoney/10');
+
+        assert.equal(data.money, 10, '应该是10');
+    });
+    it('#再添加120', async function () {
+        const { data } = await axios.get('http://localhost:8080/addMoney/120');
+        assert.equal(data.money, 130, '应该是130');
+    });
+    it('状态为假', async function () {
+        const { data } = await axios.get('http://localhost:8080/changeLogin');
+        assert.equal(data.login, false, '返回login应该为 false');
+    });
+
+    it('不带参请求增加票子，应该404', async function () {
+        const { data } = await axios.get('http://localhost:8080/addMoney');
+        assert.equal(data.code, 404, '返回code 应该404');
+    });
+    it('不带参请求增加票子，应该404', async function () {
+        const { data } = await axios.get('http://localhost:8080/addMoney/');
+        assert.equal(data.code, 404, '返回code 应该404');
+    });
 });
-
-
 
 
