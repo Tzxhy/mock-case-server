@@ -56,6 +56,7 @@ var MCS_1 = __importDefault(require("./MCS"));
 var log_1 = require("./log");
 var utils_1 = require("./utils");
 var url_pattern_1 = __importDefault(require("url-pattern"));
+var chalk_1 = __importDefault(require("chalk"));
 var server = new koa_1.default();
 server.use(koa_bodyparser_1.default());
 server.use(function (context, next) {
@@ -118,8 +119,6 @@ server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, functi
                 ctx.body = data;
                 log_1.logChange(ctx.path, MCS_1.default.currentCase.description, ctx.state, data);
                 log_1.logNowState(MCS_1.default.state);
-                // 记录状态
-                utils_1.recordState(MCS_1.default.currentCase.name, MCS_1.default.state);
                 return [2 /*return*/];
             case 2:
                 next();
@@ -134,5 +133,11 @@ server.use(function (ctx) {
         msg: "Please add CHANGE '" + path + "' into CASE `" + MCS_1.default.currentCase.name + "` or check your request.",
     };
     return;
+});
+server.on('close', function () {
+    console.log(chalk_1.default.bgWhite.green('Please wait to record your state...'));
+    // 记录状态
+    utils_1.recordState(MCS_1.default.currentCase.name, MCS_1.default.state);
+    console.log(chalk_1.default.bgBlack.white('See you next time!'));
 });
 exports.default = server;

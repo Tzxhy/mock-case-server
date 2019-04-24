@@ -19,10 +19,9 @@ function runCommand(cmd) {
 }
 
 let mcs;
-function startServer(arg = []) {
-    mcs = spawn('mcs', ['start', ...arg], {
+function startServer(a = []) {
+    mcs = spawn('mcs', ['start', ...a], {
         cwd: resourceDir,
-        stdio: 'pipe',
     });
     
     return new Promise((res) => {
@@ -33,13 +32,16 @@ function startServer(arg = []) {
             if (data.includes('Start server') !== -1) {
                 setTimeout(() => {
                     res(); // ok to start test
-                }, 100); // wait for port to be able to use
+                }, 1000); // wait for port to be able to use
             }
         });
+        mcs.stderr.on('data', (chunk) => {
+            console.log('Error: ', chunk.toString());
+        })
     })
 }
 function killServer() {
-    mcs.kill();
+    mcs.kill('SIGINT');
     return new Promise((res) => {
         setTimeout(() => {res()}, 100);
     })

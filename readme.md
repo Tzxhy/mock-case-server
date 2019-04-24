@@ -136,6 +136,10 @@ Every `Change` can contains these four fileds. When filed `transferTo` provided,
 - A: make sure your NODE_PATH rights. (`npm root -g` shows global root)
 
 ## changeLog
+- 0.0.6
+    - 对 charles 的 map remove 由原来的调用 `addChange({path, transferTo})` 改成 `addRoute({path, transferTo})` (原有方式将在下次升级次版本号时删除)
+    - 新增 `mcs start -o`，在新的 chrome 浏览器窗口中打开项目地址（无需额外的代理工具），即可代理所有 `change`
+
 - 0.0.5
     - 在使用`mcs init -p port -h host`时，可以提供一个 host，用于 charles 中直接 import
     - 在运行`mcs init -h [host] && mcs start`后，会生成一个 charles 的 map.xml，可在 map remote 中直接 import(**注意备份原来的数据**)

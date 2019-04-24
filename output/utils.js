@@ -57,11 +57,7 @@ exports.getEnvKeyValue = getEnvKeyValue;
 var stateObjPath = path_1.default.resolve('.db.state');
 function recordState(caseId, state) {
     var data = JSON.stringify({ data: state, caseId: caseId });
-    fs_1.default.writeFile(stateObjPath, data, function (err) {
-        if (err) {
-            console.log('write state obj err: ', err);
-        }
-    });
+    fs_1.default.writeFileSync(stateObjPath, data);
 }
 exports.recordState = recordState;
 function getRecordedState() {

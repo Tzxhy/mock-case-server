@@ -8,9 +8,9 @@ describe('单 case 测试状态保存。 one case', function () {
         initServerDir();
         return startServer();
     });
-    after(() => {
-        // clearServerDir();
-        return killServer();
+    after(async () => {
+        await killServer();
+        clearServerDir();
     });
     it('#改变状态', async function () {
         const { data } = await axios.get('http://localhost:8080/changeLogin');
@@ -25,14 +25,14 @@ describe('单 case 测试状态保存。 one case', function () {
     });
     it('# 以-c 参数开启服务器，再添加120', async function () {
         await startServer(['-c']);
-        // const { data } = await axios.get('http://localhost:8080/addMoney/120');
-        // assert.equal(data.money, 130, '应该是130');
+        const { data } = await axios.get('http://localhost:8080/addMoney/120');
+        assert.equal(data.money, 130, '应该是130');
     });
-    // it('#改变状态', async function () {
-    //     const { data } = await axios.get('http://localhost:8080/changeLogin');
+    it('#改变状态', async function () {
+        const { data } = await axios.get('http://localhost:8080/changeLogin');
 
-    //     assert.equal(data.login, false, '应该是false');
-    // });
+        assert.equal(data.login, false, '应该是false');
+    });
 });
 
 

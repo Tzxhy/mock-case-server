@@ -5,6 +5,7 @@ import { ParameterizedContext } from 'koa';
 import { changeCase, logChange, logNowState } from './log';
 import { findIndexByUrlPath, recordState } from './utils';
 import UrlPattern from 'url-pattern';
+import chalk from 'chalk';
 
 
 const server = new Koa();
@@ -91,9 +92,6 @@ server.use(async (ctx: ParameterizedContext, next: () => Promise<any>) => { // �
             logChange(ctx.path, MockCaseServer.currentCase.description, ctx.state, data);
             logNowState(MockCaseServer.state);
 
-            // 记录状态
-            recordState(MockCaseServer.currentCase.name, MockCaseServer.state);
-
             return;
         }
     }
@@ -113,5 +111,11 @@ server.use((ctx: ParameterizedContext) => {
     return;
 });
 
+server.on('close', () => {
+    console.log(chalk.bgWhite.green('Please wait to record your state...'));
+    // 记录状态
+    recordState(MockCaseServer.currentCase.name, MockCaseServer.state);
+    console.log(chalk.bgBlack.white('See you next time!'));
+});
 export default server;
 

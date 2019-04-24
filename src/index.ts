@@ -138,6 +138,12 @@ function startServer() {
     if (process.env.watch && !hasWatched) { // 监听 cases 目录
         watchCases();
     }
+    process.removeAllListeners('SIGINT');
+    process.on('SIGINT', function() { // 重新添加
+        server.emit('close');
+        netServer.close();
+        process.exit(0);
+    });
     return netServer;
 }
 

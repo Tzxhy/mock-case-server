@@ -52,11 +52,7 @@ function getEnvKeyValue(key: string): string {
 const stateObjPath = path.resolve('.db.state');
 function recordState(caseId: string, state: object) {
     const data = JSON.stringify({ data: state, caseId });
-    fs.writeFile(stateObjPath, data, (err) => {
-        if (err) {
-            console.log('write state obj err: ', err);
-        }
-    });
+    fs.writeFileSync(stateObjPath, data);
 }
 
 function getRecordedState(): object {

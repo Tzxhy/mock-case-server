@@ -194,6 +194,12 @@ function startServer() {
     if (process.env.watch && !hasWatched) { // 监听 cases 目录
         watchCases();
     }
+    process.removeAllListeners('SIGINT');
+    process.on('SIGINT', function () {
+        server_1.default.emit('close');
+        netServer.close();
+        process.exit(0);
+    });
     return netServer;
 }
 exports.startServer = startServer;
