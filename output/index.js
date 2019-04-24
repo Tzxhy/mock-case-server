@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -49,6 +60,7 @@ var path = require("path");
 var childProcess = require("child_process");
 var chalk_1 = __importDefault(require("chalk"));
 var fs_1 = __importDefault(require("fs"));
+var url_1 = __importDefault(require("url"));
 var execSync = function (command) { return childProcess.execSync(command, {
     stdio: 'inherit',
 }); };
@@ -94,17 +106,18 @@ function chooseCpTemplates() {
  * command: mcs init
  * @param port http mock server port
  */
-function initServer(port) {
+function initServer(_a) {
+    var port = _a.port, host = _a.host;
     return __awaiter(this, void 0, void 0, function () {
         var result;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
                     // make cases dir
                     console.log(chalk_1.default.blue('Prepare to init some dirs...'));
                     return [4 /*yield*/, chooseCpTemplates()];
                 case 1:
-                    result = _a.sent();
+                    result = _b.sent();
                     if (!result) {
                         return [2 /*return*/];
                     }
@@ -114,6 +127,7 @@ function initServer(port) {
                     // 写配置文件
                     writeConfig({
                         port: port,
+                        host: host,
                     });
                     return [2 /*return*/];
             }
@@ -145,24 +159,156 @@ function loadAllCases() {
     }
     catch (e) { // no exists of old version's entry index.js
         var requireAll = require('require-all');
-        var casesObj = requireAll(path.join(cwd, 'cases'));
+        var casesPath_1 = path.join(cwd, 'cases');
+        var cachedKeys = Object.keys(require.cache);
+        cachedKeys.forEach(function (key) {
+            if (key.indexOf(casesPath_1) !== -1) { // 用户 cases 目录
+                delete require.cache[key]; // 删除引用，方便重复加载
+            }
+        });
+        var casesObj = requireAll(casesPath_1);
         var cases = Object.values(casesObj);
         cases = cases.filter(function (item) { return item instanceof MCS_1.MockCase; }); // just load which export case
         MCS_1.default.loadCases(cases);
         console.log(chalk_1.default.green('Load all cases in ./cases!'));
     }
 }
+var hasWatched = false;
+var netServer = null;
 /** command: mcs start */
 function startServer() {
     loadAllCases(); // 加载 case
     var port = utils_1.getEnvKeyValue('port');
-    server_1.default.listen(port);
+    if (process.env.continue) { // 加载上次 case 状态
+        var data = utils_1.getRecordedState();
+        MCS_1.default.findCaseByName(data.caseId);
+        MCS_1.default.setState(__assign({}, MCS_1.default.state, data.data));
+        console.log(chalk_1.default.bgGreen.black('Load last state successful!'));
+    }
+    netServer = server_1.default.listen(port);
     var logInfo = new Date() + ': Start server at http://localhost:' + port;
     log_1.log.info(logInfo);
     console.log(logInfo);
     console.log(chalk_1.default.blue.italic('You can look out the log.log file for detail...'));
+    generageCharlesMap(); // 生成charles map文件
+    if (process.env.watch && !hasWatched) { // 监听 cases 目录
+        watchCases();
+    }
+    process.removeAllListeners('SIGINT');
+    process.on('SIGINT', function () {
+        server_1.default.emit('close');
+        netServer.close();
+        process.exit(0);
+    });
+    return netServer;
 }
 exports.startServer = startServer;
+function watchCases() {
+    hasWatched = true;
+    var watch = require('watch');
+    var restart = function () {
+        console.log(chalk_1.default.blue('Now restart server...\n\n'));
+        netServer.close(function (err) {
+            if (err) {
+                console.log('close server error: ', err);
+            }
+            setTimeout(function () {
+                utils_1.clear();
+                startServer();
+            }, 100);
+        });
+    };
+    watch.createMonitor(path.resolve('cases'), function (monitor) {
+        monitor.on("created", function () {
+            restart();
+        });
+        monitor.on("changed", function () {
+            restart();
+        });
+        monitor.on("removed", function () {
+            restart();
+        });
+    });
+}
+function generageCharlesMap() {
+    var host = utils_1.getEnvKeyValue('host');
+    var port = utils_1.getEnvKeyValue('port');
+    if (!host) {
+        return;
+    }
+    var xml = require('xml');
+    var xmlArray = [];
+    (MCS_1.default.cases || []).forEach(function (caseItem) {
+        caseItem.matches.forEach(function (change) {
+            var path;
+            if (typeof change.path === 'string') {
+                path = change.path;
+            }
+            else {
+                var urlPattern = change.path;
+                urlPattern.ast.every(function (tag) {
+                    if (tag.tag === 'static') {
+                        path = tag.value;
+                        return false;
+                    }
+                });
+            }
+            var data = {
+                mapMapping: [
+                    {
+                        sourceLocation: [{
+                                host: host,
+                            }, {
+                                path: path,
+                            }],
+                    },
+                    {
+                        destLocation: [{
+                                protocol: 'http',
+                            }, {
+                                host: 'localhost',
+                            }, {
+                                port: port,
+                            }],
+                    },
+                    {
+                        preserveHostHeader: true,
+                    },
+                    {
+                        enabled: true,
+                    }
+                ]
+            };
+            if (change.transferTo) {
+                var _a = url_1.default.parse(change.transferTo), protocol = _a.protocol, hostname = _a.hostname, port_1 = _a.port, path_1 = _a.path;
+                data.mapMapping[1].destLocation = [{
+                        protocol: (protocol || 'http').replace(':', ''),
+                    }, {
+                        host: hostname,
+                    }, {
+                        port: port_1,
+                    }, {
+                        path: path_1,
+                    }];
+            }
+            xmlArray[xmlArray.length] = data;
+        });
+    });
+    var xmlString = xml({
+        map: [
+            {
+                toolEnabled: true,
+            },
+            {
+                mappings: xmlArray,
+            }
+        ]
+    }, { declaration: true });
+    xmlString = xmlString.replace('<?xml version="1.0" encoding="UTF-8"?>', "<?xml version=\"1.0\" encoding=\"UTF-8\"?><?charles serialisation-version='2.0' ?>");
+    fs_1.default.writeFileSync(path.resolve('map.xml'), xmlString, {
+        encoding: 'utf8',
+    });
+}
 function newCase(name) {
     var caseDir = path.resolve('cases');
     var file = fs_1.default.readFileSync(path.resolve(__dirname, 'file-templates', 'case.template.js'), {

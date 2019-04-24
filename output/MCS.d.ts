@@ -1,8 +1,9 @@
 import UrlPattern from 'url-pattern';
 export interface Change {
     path: string | UrlPattern;
-    change(query: object, originState: object): object;
+    change?(query: object, originState: object): object;
     data(query: object, changedState: object): object;
+    transferTo?: string;
 }
 interface CaseDefaultObj {
     defaultState: object;

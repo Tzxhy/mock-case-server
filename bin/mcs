@@ -9,24 +9,44 @@ const {
     newCase,
 } = require('../output/index');
 
+const {
+    version,
+} = require('../package.json');
+
 program
-    .version('0.0.4', '-v, --version')
+    .version(version, '-v, --version')
 
 program
     .command('init')
     .description('initial a mock-case-server dir')
     .option('-p, --port [port]', 'set a fixed port for http, default is 8080')
+    .option('-h, --host [host]', 'set a proxy host')
     .action(function (options) {
         if (options.port) {
             port = Number(options.port);
         }
-        initServer(port);
+        let host = '';
+        if (options.host) {
+            host = options.host;
+        }
+        initServer({
+            port,
+            host,
+        });
     })
 
 program
     .command('start')
+    .option('-c, --continue', 'continue use last test state')
+    .option('-w, --watch', 'when cases files changed, restart server')
     .description('start a mock-case-server')
-    .action(() => {
+    .action((options) => {
+        if (options.continue) {
+            process.env.continue = true;
+        }
+        if (options.watch) {
+            process.env.watch = true;
+        }
         startServer();
     })
 

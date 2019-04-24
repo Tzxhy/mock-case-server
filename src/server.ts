@@ -3,8 +3,10 @@ import KoaBodyParser from 'koa-bodyparser';
 import MockCaseServer, { MockCase } from './MCS';
 import { ParameterizedContext } from 'koa';
 import { changeCase, logChange, logNowState } from './log';
-import { findIndexByUrlPath } from './utils';
+import { findIndexByUrlPath, recordState } from './utils';
 import UrlPattern from 'url-pattern';
+import chalk from 'chalk';
+
 
 const server = new Koa();
 
@@ -52,9 +54,9 @@ server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及�
     next();
 });
 
-server.use((ctx: ParameterizedContext, next: () => Promise<any>) => { // 匹配 change
+server.use(async (ctx: ParameterizedContext, next: () => Promise<any>) => { // 匹配 change
     if (MockCaseServer.currentCase) {
-        const changeIndex = findIndexByUrlPath(ctx.path, MockCaseServer.currentCase.matches);
+        const changeIndex = findIndexByUrlPath(ctx.path, MockCaseServer.currentCase);
         if (changeIndex !== -1) {
             const originState = MockCaseServer.state;
             const match = MockCaseServer.currentCase.matches[changeIndex];
@@ -65,18 +67,22 @@ server.use((ctx: ParameterizedContext, next: () => Promise<any>) => { // 匹配 
             const pattern = {
                 ...urlPatternMatch,
             };
-            const changedState: object = match.change({ // 改变
-                ...ctx.state,
-                pattern,
-            }, {
-                ...originState,
-            });
+            let changedState: object = {};
+            if (match.change) { // 存在 change 方法
+                changedState = match.change({ // 改变
+                    ...ctx.state,
+                    pattern,
+                }, {
+                    ...originState,
+                });
+            }
+            
             MockCaseServer.setState({ // 保存状态
                 ...originState,
                 ...changedState,
             });
 
-            const data = match.data({ // 获得返回前端的数据
+            const data = await match.data({ // 获得返回前端的数据
                 ...ctx.state,
                 pattern,
             }, {
@@ -85,11 +91,13 @@ server.use((ctx: ParameterizedContext, next: () => Promise<any>) => { // 匹配 
             ctx.body = data;
             logChange(ctx.path, MockCaseServer.currentCase.description, ctx.state, data);
             logNowState(MockCaseServer.state);
+
             return;
         }
     }
     next();
 });
+
 
 
 server.use((ctx: ParameterizedContext) => {
@@ -101,6 +109,13 @@ server.use((ctx: ParameterizedContext) => {
         msg: `Please add CHANGE '${path}' into CASE \`${MockCaseServer.currentCase.name}\` or check your request.`,
     };
     return;
-})
+});
+
+server.on('close', () => {
+    console.log(chalk.bgWhite.green('Please wait to record your state...'));
+    // 记录状态
+    recordState(MockCaseServer.currentCase.name, MockCaseServer.state);
+    console.log(chalk.bgBlack.white('See you next time!'));
+});
 export default server;
 
