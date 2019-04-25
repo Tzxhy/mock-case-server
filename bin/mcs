@@ -20,7 +20,8 @@ program
     .command('init')
     .description('initial a mock-case-server dir')
     .option('-p, --port [port]', 'set a fixed port for http, default is 8080')
-    .option('-h, --host [host]', 'set a proxy host')
+    .option('-ht, --host [host]', 'set a proxy host')
+    .option('-t, --target [url]', 'set a target url when you run \`mcs start -o\`')
     .action(function (options) {
         if (options.port) {
             port = Number(options.port);
@@ -29,9 +30,14 @@ program
         if (options.host) {
             host = options.host;
         }
+        let url = '';
+        if (options.target) {
+            url = options.target;
+        }
         initServer({
             port,
             host,
+            target: url,
         });
     })
 
@@ -39,13 +45,18 @@ program
     .command('start')
     .option('-c, --continue', 'continue use last test state')
     .option('-w, --watch', 'when cases files changed, restart server')
+    .option('-o, --open', 'open a standalone chrome process with pac')
     .description('start a mock-case-server')
     .action((options) => {
+        
         if (options.continue) {
             process.env.continue = true;
         }
         if (options.watch) {
             process.env.watch = true;
+        }
+        if (options.open) {
+            process.env.open = true;
         }
         startServer();
     })

@@ -17,14 +17,19 @@ var MockCase = /** @class */ (function () {
         this.defaultState = defaultObj.defaultState;
         this.description = defaultObj.description;
         this.matches = [];
+        this.routes = [];
     }
     /** 添加一条匹配规则 */
     MockCase.prototype.addChange = function (change) {
         if (this.matches) {
             this.matches.push(change);
         }
-        else {
-            this.matches = [change];
+        return this;
+    };
+    /** 添加一条转发规则 */
+    MockCase.prototype.addRoute = function (route) {
+        if (this.matches) {
+            this.routes.push(route);
         }
         return this;
     };

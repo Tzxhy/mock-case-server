@@ -5,6 +5,10 @@ export interface Change {
     data(query: object, changedState: object): object;
     transferTo?: string;
 }
+export interface Route {
+    path: string;
+    transferTo: string;
+}
 interface CaseDefaultObj {
     defaultState: object;
     description: string;
@@ -13,6 +17,7 @@ export declare class MockCase {
     name: string;
     /** 匹配该case的所有路径 */
     matches: Change[];
+    routes: Route[];
     description: string;
     /** 默认的 **state** 对象 */
     defaultState: object;
@@ -20,6 +25,8 @@ export declare class MockCase {
     constructor(name: string, defaultObj?: CaseDefaultObj);
     /** 添加一条匹配规则 */
     addChange(change: Change): MockCase;
+    /** 添加一条转发规则 */
+    addRoute(route: Route): MockCase;
 }
 declare class MockCaseServer {
     static createCase: (name: string, defaultObj: CaseDefaultObj) => MockCase;

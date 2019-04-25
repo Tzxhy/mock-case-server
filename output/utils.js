@@ -1,4 +1,24 @@
 "use strict";
+var __read = (this && this.__read) || function (o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+};
+var __spread = (this && this.__spread) || function () {
+    for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read(arguments[i]));
+    return ar;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -6,21 +26,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var path_1 = __importDefault(require("path"));
 var fs_1 = __importDefault(require("fs"));
 var chalk_1 = __importDefault(require("chalk"));
+var util_1 = __importDefault(require("util"));
 /**
  *
  * @param path 请求 url
  * @param matches changes 集合
  */
-function findIndexByUrlPath(path, caseItem) {
+function findMatchIndexByUrlPath(path, caseItem) {
     var matches = caseItem.matches;
     return matches.findIndex(function (match) {
         if (typeof match.path === 'string') {
-            return !match.transferTo && match.path === path;
+            return match.path === path;
         }
-        return !match.transferTo && match.path.match(path);
+        return match.path.match(path);
     });
 }
-exports.findIndexByUrlPath = findIndexByUrlPath;
+exports.findMatchIndexByUrlPath = findMatchIndexByUrlPath;
+function getRouteByUrlPath(path, caseItem) {
+    var routes = getCollectionWithMatchesAndRoute(caseItem);
+    return routes && routes.find(function (match) {
+        if (typeof match.path === 'string') {
+            return match.path === path;
+        }
+        if (match.path.match(path)) {
+            return true;
+        }
+        return false;
+    });
+}
+exports.getRouteByUrlPath = getRouteByUrlPath;
+var getCollectionWithMatchesAndRoute = util_1.default.deprecate(function (caseItem) {
+    return __spread(new Set(__spread(caseItem.matches, caseItem.routes)));
+}, '在 matches 中使用transferTo的功能将在 v0.3中移除！');
+exports.getCollectionWithMatchesAndRoute = getCollectionWithMatchesAndRoute;
 /** 将数组中出现的字符串进行分组 */
 function groupName(arr) {
     var map = {};
@@ -48,7 +86,7 @@ function getEnvKeyValue(key) {
         encoding: 'utf8',
     });
     file.split('\n').forEach(function (line) {
-        var _a = line.split('='), key = _a[0], value = _a[1];
+        var _a = __read(line.split('='), 2), key = _a[0], value = _a[1];
         envMap[key] = value;
     });
     return envMap[key] || '';

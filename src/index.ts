@@ -8,6 +8,8 @@ const execSync = (command: string) => childProcess.execSync(command, {
     stdio: 'inherit',
 });
 
+const exec = (command: string) => childProcess.exec(command);
+
 const cwd = process.cwd();
 function cpTemplates() {
     execSync(`cp -r ${__dirname}/templates/. ${cwd}`); // 使用/. 不要/*，后者不拷贝隐藏文件、夹
@@ -44,12 +46,10 @@ async function chooseCpTemplates() {
  * command: mcs init
  * @param port http mock server port
  */
-async function initServer({
-    port,
-    host,
-}: {
+async function initServer(arg: {
     port: number,
     host: string,
+    target: string,
 }) {
     // make cases dir
     console.log(chalk.blue('Prepare to init some dirs...'));
@@ -66,10 +66,7 @@ async function initServer({
     console.log(chalk.bgCyan.black('Init mock-case-server finished. Now you can write your own cases and then run \'mcs start\'!'));
 
     // 写配置文件
-    writeConfig({
-        port,
-        host,
-    });
+    writeConfig(arg);
 }
 
 function writeConfig(config: any) {
@@ -86,8 +83,8 @@ function writeConfig(config: any) {
 
 import server from './server';
 import { log } from './log';
-import { getEnvKeyValue, getRecordedState, clear } from './utils';
-import MockCaseServer, { MockCase, Change } from './MCS';
+import { getEnvKeyValue, getRecordedState, clear, getCollectionWithMatchesAndRoute } from './utils';
+import MockCaseServer, { MockCase, Change, Route } from './MCS';
 
 function loadAllCases() {
     const oldIndex = `${cwd}/index.js`;
@@ -113,7 +110,9 @@ function loadAllCases() {
     }
 }
 
-let hasWatched = false;
+const justDoOnce = {
+    watch: false,
+};
 let netServer: any = null;
 /** command: mcs start */
 function startServer() {
@@ -121,22 +120,37 @@ function startServer() {
 
     const port = getEnvKeyValue('port');
     if (process.env.continue) { // 加载上次 case 状态
-        const data: any = getRecordedState();
-        MockCaseServer.findCaseByName(data.caseId);
-        MockCaseServer.setState({
-            ...MockCaseServer.state,
-            ...data.data,
-        });
-        console.log(chalk.bgGreen.black('Load last state successful!'));
+        try {
+            const data: any = getRecordedState();
+            MockCaseServer.findCaseByName(data.caseId);
+            MockCaseServer.setState({
+                ...MockCaseServer.state,
+                ...data.data,
+            });
+            console.log(chalk.bgGreen.black('Load last state successful!'));
+        } catch(err) {
+            console.log(chalk.blue('Load last state failed...'));
+        }
     }
     netServer = server.listen(port);
     const logInfo = new Date() + ': Start server at http://localhost:' + port;
     log.info(logInfo);
     console.log(logInfo);
     console.log(chalk.blue.italic('You can look out the log.log file for detail...'));
-    generageCharlesMap(); // 生成charles map文件
-    if (process.env.watch && !hasWatched) { // 监听 cases 目录
+    generateResource(); // 生成charles map文件 及 pac
+    if (process.env.watch && !justDoOnce.watch) { // 监听 cases 目录
+        justDoOnce.watch = true;
         watchCases();
+    }
+    if (process.env.open) {
+        if (googleChrome) {
+            googleChrome.kill();
+        }
+        try {
+            openBrowser(port);
+        } catch (err) {
+            console.error(chalk.red('Can\'t open chrome in you pc!'));
+        }
     }
     process.removeAllListeners('SIGINT');
     process.on('SIGINT', function() { // 重新添加
@@ -146,9 +160,38 @@ function startServer() {
     });
     return netServer;
 }
+let googleChrome: childProcess.ChildProcess;
+async function openBrowser(port: string) {
+    const target = getEnvKeyValue('target');
+    try {
+        fs.accessSync('~/.mcs/cache', fs.constants.F_OK);
+    } catch (e) {
+        execSync(`mkdir -p ~/.mcs/cache`); // 不存在则创建
+    }
+    // --incognito
+    googleChrome = exec(`/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --user-data-dir="$HOME/.mcs/cache" --proxy-pac-url="http://127.0.0.1:${port}/pac.pac" --proxy-bypass-list="<local>" --lang=local ${target}`);
+}
+
+function generagePac({
+    proxyAddr,
+    proxyMaps,
+    proxyPaths,
+}: {
+    proxyAddr: string,
+    proxyMaps: [],
+    proxyPaths: any[],
+}) {
+    let file = fs.readFileSync(path.resolve(__dirname, 'file-templates', 'pac.template.pac'), {
+        encoding: 'utf8',
+    });
+    file = file
+        .replace('{{PROXY_PATHS}}', JSON.stringify(proxyPaths))
+        .replace('{{MAP}}', JSON.stringify(proxyMaps))
+        .replace('{{PROXY_ADDR}}', proxyAddr);
+    fs.writeFileSync(path.resolve('pac.pac'), file);
+}
 
 function watchCases() {
-    hasWatched = true;
     const watch = require('watch');
     const restart = () => {
         console.log(chalk.blue('Now restart server...\n\n'));
@@ -175,7 +218,7 @@ function watchCases() {
     });
 }
 
-function generageCharlesMap() {
+function generateResource() {
     const host = getEnvKeyValue('host');
     const port = getEnvKeyValue('port');
     if (!host) {
@@ -183,8 +226,11 @@ function generageCharlesMap() {
     }
     const xml = require('xml');
     const xmlArray: any = [];
+    const proxyPaths: any[] = [];
+    const proxyMaps: any = {};
+    const proxyAddr = `127.0.0.1:${port}`;
     (MockCaseServer.cases || []).forEach((caseItem: MockCase) => {
-        caseItem.matches.forEach((change: Change) => {
+        getCollectionWithMatchesAndRoute(caseItem).forEach((change: Change | Route) => {
             let path;
             if (typeof change.path === 'string') {
                 path = change.path;
@@ -197,6 +243,7 @@ function generageCharlesMap() {
                     }
                 });
             }
+            proxyPaths.push(path as string); // 添加命中的 path
             const data: any = {
                 mapMapping: [
                     {
@@ -223,13 +270,14 @@ function generageCharlesMap() {
                     }
                 ]
             };
+            
             if (change.transferTo) {
                 
                 const {
                     protocol,
                     hostname,
                     port,
-                    path,
+                    path: tPath,
                 } = URL.parse(change.transferTo);
                 data.mapMapping[1].destLocation = [{
                     protocol: (protocol || 'http').replace(':', ''),
@@ -238,7 +286,7 @@ function generageCharlesMap() {
                 }, {
                     port,
                 }, {
-                    path,
+                    path: tPath,
                 }];
             }
 
@@ -260,8 +308,15 @@ function generageCharlesMap() {
         '<?xml version="1.0" encoding="UTF-8"?>',
         `<?xml version="1.0" encoding="UTF-8"?><?charles serialisation-version='2.0' ?>`
     );
+    // console.log('xmlString', xmlString);
+    
     fs.writeFileSync(path.resolve('map.xml'), xmlString, {
         encoding: 'utf8',
+    });
+    generagePac({
+        proxyAddr,
+        proxyMaps,
+        proxyPaths,
     });
 }
 
