@@ -136,6 +136,8 @@ Every `Change` can contains these four fileds. When filed `transferTo` provided,
 - A: make sure your NODE_PATH rights. (`npm root -g` shows global root)
 
 ## changeLog
+- 0.0.9
+    - bugfixs
 
 - 0.0.8
     - 对 charles 的 map remove 由原来的调用 `addChange({path, transferTo})` 改成 `addRoute({path, transferTo})` (原有方式将在下次升级次版本号时删除)

@@ -96,7 +96,7 @@ server.use(function (ctx, next) {
         }
         else { // 初始化状态
             log_1.changeCase(caseId);
-            MCS_1.default.setState(nowCase.defaultState);
+            MCS_1.default.setState(JSON.parse(JSON.stringify(nowCase.defaultState)));
             ctx.body = {
                 code: 0,
                 msg: "Ok, now use " + caseId + " for coming tests...",
@@ -151,7 +151,7 @@ server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, functi
                 ctx.status = 200;
                 return [4 /*yield*/, match.change(__assign({}, ctx.state, { pattern: pattern }), __assign({}, originState))];
             case 1:
-                changedState = _a.sent();
+                changedState = (_a.sent()) || {};
                 _a.label = 2;
             case 2:
                 MCS_1.default.setState(__assign({}, originState, changedState));
@@ -175,6 +175,9 @@ server.use(function (ctx) {
     return;
 });
 server.on('close', function () {
+    if (!MCS_1.default.currentCase) {
+        return;
+    }
     console.log(chalk_1.default.bgWhite.green('Please wait to record your state...'));
     // 记录状态
     utils_1.recordState(MCS_1.default.currentCase.name, MCS_1.default.state);

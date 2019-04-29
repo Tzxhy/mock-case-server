@@ -55,7 +55,7 @@ server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及�
             return;
         } else { // 初始化状态
             changeCase(caseId);
-            MockCaseServer.setState(nowCase.defaultState);
+            MockCaseServer.setState(JSON.parse(JSON.stringify(nowCase.defaultState)));
             ctx.body = {
                 code: 0,
                 msg: `Ok, now use ${caseId} for coming tests...`,
@@ -101,12 +101,12 @@ server.use(async (ctx: ParameterizedContext, next: () => Promise<any>) => { // �
             let changedState: object = {};
             if (match.change) { // 存在 change 方法
                 ctx.status = 200;
-                changedState = await match.change({ // 改变
+                changedState = (await match.change({ // 改变
                     ...ctx.state,
                     pattern,
                 }, {
                     ...originState,
-                });
+                })) || {};
             }
 
             MockCaseServer.setState({ // 保存状态
@@ -145,6 +145,9 @@ server.use((ctx: ParameterizedContext) => {
 
 
 server.on('close', () => {
+    if (!MockCaseServer.currentCase) {
+        return;
+    }
     console.log(chalk.bgWhite.green('Please wait to record your state...'));
     // 记录状态
     recordState(MockCaseServer.currentCase.name, MockCaseServer.state);
