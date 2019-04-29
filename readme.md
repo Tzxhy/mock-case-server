@@ -136,9 +136,20 @@ Every `Change` can contains these four fileds. When filed `transferTo` provided,
 - A: make sure your NODE_PATH rights. (`npm root -g` shows global root)
 
 ## changeLog
-- 0.0.6
+- 0.0.9
+    - bugfixs
+
+- 0.0.8
     - 对 charles 的 map remove 由原来的调用 `addChange({path, transferTo})` 改成 `addRoute({path, transferTo})` (原有方式将在下次升级次版本号时删除)
     - 新增 `mcs start -o`，在新的 chrome 浏览器窗口中打开项目地址（无需额外的代理工具），即可代理所有 `change`
+    - bugfix: 修复了异步`change`/`data`时返回404的bug（**建议尽快升级**）。
+    - 在`mcs start -c`无上次使用的.db.state 文件时，静默失败，不报错
+
+___
+- 0.0.8
+    - deprecate field `tranfserTo` in `addChange`, instead using `addRoute{path, tranfserTo}`
+    - add `mcs init --host target.com -p 8080 && mcs start -o`.
+    - bugfix: async/await don't work in `change/data` in addChange.
 
 - 0.0.5
     - 在使用`mcs init -p port -h host`时，可以提供一个 host，用于 charles 中直接 import

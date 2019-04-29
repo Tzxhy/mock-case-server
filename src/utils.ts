@@ -1,21 +1,42 @@
-import { Change, MockCase } from "./MCS";
+import { Change, MockCase, Route } from "./MCS";
 import path from 'path';
 import fs from 'fs';
 import chalk from "chalk";
+import util from 'util';
 /**
  * 
  * @param path 请求 url
  * @param matches changes 集合
  */
-function findIndexByUrlPath(path: string, caseItem: MockCase): number {
+
+
+function findMatchIndexByUrlPath(path: string, caseItem: MockCase): number {
     const matches = caseItem.matches;
     return matches.findIndex((match: Change) => {
         if (typeof match.path === 'string') {
-            return !match.transferTo && match.path === path;
+            return match.path === path;
         }
-        return !match.transferTo && match.path.match(path)
+        return match.path.match(path);
     });
 }
+
+function getRouteByUrlPath(path: string, caseItem: MockCase): Route | Change | undefined {
+    const routes = getCollectionWithMatchesAndRoute(caseItem);
+    return routes && routes.find((match: Change | Route) => {
+        if (typeof match.path === 'string') {
+            return match.path === path;
+        }
+        if (match.path.match(path)) {
+            return true;
+        }
+        return false;
+    });
+}
+
+const getCollectionWithMatchesAndRoute = util.deprecate((caseItem: MockCase) => {
+    return [...new Set([...caseItem.matches, ...caseItem.routes])];
+}, '在 matches 中使用transferTo的功能将在 v0.3中移除！');
+
 
 /** 将数组中出现的字符串进行分组 */
 function groupName(arr: string[]): object {
@@ -75,7 +96,9 @@ function clear() {
 
 
 export {
-    findIndexByUrlPath,
+    findMatchIndexByUrlPath,
+    getRouteByUrlPath,
+    getCollectionWithMatchesAndRoute,
     groupName,
     getEnvKeyValue,
     

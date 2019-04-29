@@ -64,6 +64,7 @@ var url_1 = __importDefault(require("url"));
 var execSync = function (command) { return childProcess.execSync(command, {
     stdio: 'inherit',
 }); };
+var exec = function (command) { return childProcess.exec(command); };
 var cwd = process.cwd();
 function cpTemplates() {
     execSync("cp -r " + __dirname + "/templates/. " + cwd); // 使用/. 不要/*，后者不拷贝隐藏文件、夹
@@ -106,18 +107,17 @@ function chooseCpTemplates() {
  * command: mcs init
  * @param port http mock server port
  */
-function initServer(_a) {
-    var port = _a.port, host = _a.host;
+function initServer(arg) {
     return __awaiter(this, void 0, void 0, function () {
         var result;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
                 case 0:
                     // make cases dir
                     console.log(chalk_1.default.blue('Prepare to init some dirs...'));
                     return [4 /*yield*/, chooseCpTemplates()];
                 case 1:
-                    result = _b.sent();
+                    result = _a.sent();
                     if (!result) {
                         return [2 /*return*/];
                     }
@@ -125,10 +125,7 @@ function initServer(_a) {
                     execSync("npm init -y  > /dev/null");
                     console.log(chalk_1.default.bgCyan.black('Init mock-case-server finished. Now you can write your own cases and then run \'mcs start\'!'));
                     // 写配置文件
-                    writeConfig({
-                        port: port,
-                        host: host,
-                    });
+                    writeConfig(arg);
                     return [2 /*return*/];
             }
         });
@@ -173,26 +170,45 @@ function loadAllCases() {
         console.log(chalk_1.default.green('Load all cases in ./cases!'));
     }
 }
-var hasWatched = false;
+var justDoOnce = {
+    watch: false,
+};
 var netServer = null;
 /** command: mcs start */
 function startServer() {
     loadAllCases(); // 加载 case
     var port = utils_1.getEnvKeyValue('port');
     if (process.env.continue) { // 加载上次 case 状态
-        var data = utils_1.getRecordedState();
-        MCS_1.default.findCaseByName(data.caseId);
-        MCS_1.default.setState(__assign({}, MCS_1.default.state, data.data));
-        console.log(chalk_1.default.bgGreen.black('Load last state successful!'));
+        try {
+            var data = utils_1.getRecordedState();
+            MCS_1.default.findCaseByName(data.caseId);
+            MCS_1.default.setState(__assign({}, MCS_1.default.state, data.data));
+            console.log(chalk_1.default.bgGreen.black('Load last state successful!'));
+        }
+        catch (err) {
+            console.log(chalk_1.default.blue('Load last state failed...'));
+        }
     }
     netServer = server_1.default.listen(port);
     var logInfo = new Date() + ': Start server at http://localhost:' + port;
     log_1.log.info(logInfo);
     console.log(logInfo);
     console.log(chalk_1.default.blue.italic('You can look out the log.log file for detail...'));
-    generageCharlesMap(); // 生成charles map文件
-    if (process.env.watch && !hasWatched) { // 监听 cases 目录
+    generateResource(); // 生成charles map文件 及 pac
+    if (process.env.watch && !justDoOnce.watch) { // 监听 cases 目录
+        justDoOnce.watch = true;
         watchCases();
+    }
+    if (process.env.open) {
+        if (googleChrome) {
+            googleChrome.kill();
+        }
+        try {
+            openBrowser(port);
+        }
+        catch (err) {
+            console.error(chalk_1.default.red('Can\'t open chrome in you pc!'));
+        }
     }
     process.removeAllListeners('SIGINT');
     process.on('SIGINT', function () {
@@ -203,8 +219,36 @@ function startServer() {
     return netServer;
 }
 exports.startServer = startServer;
+var googleChrome;
+function openBrowser(port) {
+    return __awaiter(this, void 0, void 0, function () {
+        var target;
+        return __generator(this, function (_a) {
+            target = utils_1.getEnvKeyValue('target');
+            try {
+                fs_1.default.accessSync('~/.mcs/cache', fs_1.default.constants.F_OK);
+            }
+            catch (e) {
+                execSync("mkdir -p ~/.mcs/cache"); // 不存在则创建
+            }
+            // --incognito
+            googleChrome = exec("/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --user-data-dir=\"$HOME/.mcs/cache\" --proxy-pac-url=\"http://127.0.0.1:" + port + "/pac.pac\" --proxy-bypass-list=\"<local>\" --lang=local " + target);
+            return [2 /*return*/];
+        });
+    });
+}
+function generagePac(_a) {
+    var proxyAddr = _a.proxyAddr, proxyMaps = _a.proxyMaps, proxyPaths = _a.proxyPaths;
+    var file = fs_1.default.readFileSync(path.resolve(__dirname, 'file-templates', 'pac.template.pac'), {
+        encoding: 'utf8',
+    });
+    file = file
+        .replace('{{PROXY_PATHS}}', JSON.stringify(proxyPaths))
+        .replace('{{MAP}}', JSON.stringify(proxyMaps))
+        .replace('{{PROXY_ADDR}}', proxyAddr);
+    fs_1.default.writeFileSync(path.resolve('pac.pac'), file);
+}
 function watchCases() {
-    hasWatched = true;
     var watch = require('watch');
     var restart = function () {
         console.log(chalk_1.default.blue('Now restart server...\n\n'));
@@ -230,7 +274,7 @@ function watchCases() {
         });
     });
 }
-function generageCharlesMap() {
+function generateResource() {
     var host = utils_1.getEnvKeyValue('host');
     var port = utils_1.getEnvKeyValue('port');
     if (!host) {
@@ -238,8 +282,11 @@ function generageCharlesMap() {
     }
     var xml = require('xml');
     var xmlArray = [];
+    var proxyPaths = [];
+    var proxyMaps = {};
+    var proxyAddr = "127.0.0.1:" + port;
     (MCS_1.default.cases || []).forEach(function (caseItem) {
-        caseItem.matches.forEach(function (change) {
+        utils_1.getCollectionWithMatchesAndRoute(caseItem).forEach(function (change) {
             var path;
             if (typeof change.path === 'string') {
                 path = change.path;
@@ -253,6 +300,7 @@ function generageCharlesMap() {
                     }
                 });
             }
+            proxyPaths.push(path); // 添加命中的 path
             var data = {
                 mapMapping: [
                     {
@@ -280,7 +328,7 @@ function generageCharlesMap() {
                 ]
             };
             if (change.transferTo) {
-                var _a = url_1.default.parse(change.transferTo), protocol = _a.protocol, hostname = _a.hostname, port_1 = _a.port, path_1 = _a.path;
+                var _a = url_1.default.parse(change.transferTo), protocol = _a.protocol, hostname = _a.hostname, port_1 = _a.port, tPath = _a.path;
                 data.mapMapping[1].destLocation = [{
                         protocol: (protocol || 'http').replace(':', ''),
                     }, {
@@ -288,7 +336,7 @@ function generageCharlesMap() {
                     }, {
                         port: port_1,
                     }, {
-                        path: path_1,
+                        path: tPath,
                     }];
             }
             xmlArray[xmlArray.length] = data;
@@ -305,8 +353,14 @@ function generageCharlesMap() {
         ]
     }, { declaration: true });
     xmlString = xmlString.replace('<?xml version="1.0" encoding="UTF-8"?>', "<?xml version=\"1.0\" encoding=\"UTF-8\"?><?charles serialisation-version='2.0' ?>");
+    // console.log('xmlString', xmlString);
     fs_1.default.writeFileSync(path.resolve('map.xml'), xmlString, {
         encoding: 'utf8',
+    });
+    generagePac({
+        proxyAddr: proxyAddr,
+        proxyMaps: proxyMaps,
+        proxyPaths: proxyPaths,
     });
 }
 function newCase(name) {

@@ -57,11 +57,31 @@ var log_1 = require("./log");
 var utils_1 = require("./utils");
 var url_pattern_1 = __importDefault(require("url-pattern"));
 var chalk_1 = __importDefault(require("chalk"));
+var fs_1 = __importDefault(require("fs"));
+var path_1 = __importDefault(require("path"));
+var axios_1 = __importDefault(require("axios"));
 var server = new koa_1.default();
 server.use(koa_bodyparser_1.default());
+server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        console.log('url: ', ctx.path);
+        return [2 /*return*/, next()];
+    });
+}); });
+// pac 文件
+server.use(function (ctx, next) {
+    if (ctx.path === '/pac.pac') {
+        ctx.body = fs_1.default.readFileSync(path_1.default.resolve('pac.pac'), {
+            encoding: 'utf8',
+        });
+        // ctx.set('Content-Type', 'application/x-ns-proxy-autoconfig')
+        return;
+    }
+    return next();
+});
 server.use(function (context, next) {
     context.state = __assign({}, context.query, context.request.body);
-    next();
+    return next();
 });
 server.use(function (ctx, next) {
     if (ctx.path === '/changeCase') {
@@ -76,7 +96,7 @@ server.use(function (ctx, next) {
         }
         else { // 初始化状态
             log_1.changeCase(caseId);
-            MCS_1.default.setState(nowCase.defaultState);
+            MCS_1.default.setState(JSON.parse(JSON.stringify(nowCase.defaultState)));
             ctx.body = {
                 code: 0,
                 msg: "Ok, now use " + caseId + " for coming tests...",
@@ -91,16 +111,34 @@ server.use(function (ctx, next) {
         };
         return;
     }
-    next();
+    return next();
 });
+// 代理转发
+server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, function () {
+    var path, matchItem, data;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                path = ctx.path;
+                matchItem = utils_1.getRouteByUrlPath(path, MCS_1.default.currentCase);
+                if (!(matchItem && matchItem.transferTo)) return [3 /*break*/, 2];
+                return [4 /*yield*/, axios_1.default.get(matchItem.transferTo)];
+            case 1:
+                data = (_a.sent()).data;
+                ctx.body = data;
+                return [2 /*return*/];
+            case 2: return [2 /*return*/, next()];
+        }
+    });
+}); });
 server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, function () {
     var changeIndex, originState, match, urlPatternMatch, pattern, changedState, data;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                if (!MCS_1.default.currentCase) return [3 /*break*/, 2];
-                changeIndex = utils_1.findIndexByUrlPath(ctx.path, MCS_1.default.currentCase);
-                if (!(changeIndex !== -1)) return [3 /*break*/, 2];
+                if (!MCS_1.default.currentCase) return [3 /*break*/, 4];
+                changeIndex = utils_1.findMatchIndexByUrlPath(ctx.path, MCS_1.default.currentCase);
+                if (!(changeIndex !== -1)) return [3 /*break*/, 4];
                 originState = MCS_1.default.state;
                 match = MCS_1.default.currentCase.matches[changeIndex];
                 urlPatternMatch = {};
@@ -109,20 +147,22 @@ server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, functi
                 }
                 pattern = __assign({}, urlPatternMatch);
                 changedState = {};
-                if (match.change) { // 存在 change 方法
-                    changedState = match.change(__assign({}, ctx.state, { pattern: pattern }), __assign({}, originState));
-                }
+                if (!match.change) return [3 /*break*/, 2];
+                ctx.status = 200;
+                return [4 /*yield*/, match.change(__assign({}, ctx.state, { pattern: pattern }), __assign({}, originState))];
+            case 1:
+                changedState = (_a.sent()) || {};
+                _a.label = 2;
+            case 2:
                 MCS_1.default.setState(__assign({}, originState, changedState));
                 return [4 /*yield*/, match.data(__assign({}, ctx.state, { pattern: pattern }), __assign({}, MCS_1.default.state))];
-            case 1:
+            case 3:
                 data = _a.sent();
                 ctx.body = data;
                 log_1.logChange(ctx.path, MCS_1.default.currentCase.description, ctx.state, data);
                 log_1.logNowState(MCS_1.default.state);
                 return [2 /*return*/];
-            case 2:
-                next();
-                return [2 /*return*/];
+            case 4: return [2 /*return*/, next()];
         }
     });
 }); });
@@ -135,6 +175,9 @@ server.use(function (ctx) {
     return;
 });
 server.on('close', function () {
+    if (!MCS_1.default.currentCase) {
+        return;
+    }
     console.log(chalk_1.default.bgWhite.green('Please wait to record your state...'));
     // 记录状态
     utils_1.recordState(MCS_1.default.currentCase.name, MCS_1.default.state);

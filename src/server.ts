@@ -3,21 +3,40 @@ import KoaBodyParser from 'koa-bodyparser';
 import MockCaseServer, { MockCase } from './MCS';
 import { ParameterizedContext } from 'koa';
 import { changeCase, logChange, logNowState } from './log';
-import { findIndexByUrlPath, recordState } from './utils';
+import { findMatchIndexByUrlPath, recordState, getRouteByUrlPath } from './utils';
 import UrlPattern from 'url-pattern';
 import chalk from 'chalk';
-
+import fs from 'fs';
+import path from 'path';
+import axios from 'axios';
 
 const server = new Koa();
 
 server.use(KoaBodyParser());
+server.use(async (ctx, next) => {
+    console.log('url: ', ctx.path);
+    return next();
+});
+
+
+// pac 文件
+server.use((ctx: ParameterizedContext, next: any) => {
+    if (ctx.path === '/pac.pac') {
+        ctx.body = fs.readFileSync(path.resolve('pac.pac'), {
+            encoding: 'utf8',
+        });
+        // ctx.set('Content-Type', 'application/x-ns-proxy-autoconfig')
+        return;
+    }
+    return next();
+});
 
 server.use((context, next) => { // 加载参数
     context.state = {
         ...context.query,
         ...context.request.body,
     };
-    next();
+    return next();
 });
 
 server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及检测当前是否有 case
@@ -36,7 +55,7 @@ server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及�
             return;
         } else { // 初始化状态
             changeCase(caseId);
-            MockCaseServer.setState(nowCase.defaultState);
+            MockCaseServer.setState(JSON.parse(JSON.stringify(nowCase.defaultState)));
             ctx.body = {
                 code: 0,
                 msg: `Ok, now use ${caseId} for coming tests...`,
@@ -51,12 +70,24 @@ server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及�
         };
         return;
     }
-    next();
+    return next();
+});
+
+// 代理转发
+server.use(async (ctx: ParameterizedContext, next: any) => {
+    const path = ctx.path;
+    const matchItem = getRouteByUrlPath(path, MockCaseServer.currentCase);
+    if (matchItem && matchItem.transferTo) {
+        const {data} = await axios.get(matchItem.transferTo);
+        ctx.body = data;
+        return;
+    }
+    return next();
 });
 
 server.use(async (ctx: ParameterizedContext, next: () => Promise<any>) => { // 匹配 change
     if (MockCaseServer.currentCase) {
-        const changeIndex = findIndexByUrlPath(ctx.path, MockCaseServer.currentCase);
+        const changeIndex = findMatchIndexByUrlPath(ctx.path, MockCaseServer.currentCase);
         if (changeIndex !== -1) {
             const originState = MockCaseServer.state;
             const match = MockCaseServer.currentCase.matches[changeIndex];
@@ -69,14 +100,15 @@ server.use(async (ctx: ParameterizedContext, next: () => Promise<any>) => { // �
             };
             let changedState: object = {};
             if (match.change) { // 存在 change 方法
-                changedState = match.change({ // 改变
+                ctx.status = 200;
+                changedState = (await match.change({ // 改变
                     ...ctx.state,
                     pattern,
                 }, {
                     ...originState,
-                });
+                })) || {};
             }
-            
+
             MockCaseServer.setState({ // 保存状态
                 ...originState,
                 ...changedState,
@@ -95,7 +127,7 @@ server.use(async (ctx: ParameterizedContext, next: () => Promise<any>) => { // �
             return;
         }
     }
-    next();
+    return next();
 });
 
 
@@ -111,7 +143,11 @@ server.use((ctx: ParameterizedContext) => {
     return;
 });
 
+
 server.on('close', () => {
+    if (!MockCaseServer.currentCase) {
+        return;
+    }
     console.log(chalk.bgWhite.green('Please wait to record your state...'));
     // 记录状态
     recordState(MockCaseServer.currentCase.name, MockCaseServer.state);
