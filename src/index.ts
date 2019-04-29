@@ -85,7 +85,20 @@ import server from './server';
 import { log } from './log';
 import { getEnvKeyValue, getRecordedState, clear, getCollectionWithMatchesAndRoute } from './utils';
 import MockCaseServer, { MockCase, Change, Route } from './MCS';
-
+function getFlattedCases(dirname: string = '', casesObj: any): object {
+    let o: any = {};
+    for (const filename in casesObj) {
+        if (/.+\.js$/.test(filename)) {
+            o[dirname + filename] = casesObj[filename];
+        } else {
+            o = {
+                ...o,
+                ...getFlattedCases(filename + '/', casesObj[filename]),
+            };
+        }
+    }
+    return o;
+}
 function loadAllCases() {
     const oldIndex = `${cwd}/index.js`;
     try {
@@ -102,8 +115,15 @@ function loadAllCases() {
                 delete require.cache[key]; // 删除引用，方便重复加载
             }
         });
-        let casesObj = requireAll(casesPath);
-        let cases: MockCase[] = Object.values(casesObj);
+
+        let casesObj = requireAll({
+            dirname: casesPath,
+            filter: /.+\.js$/,
+            recursive: true,
+        });
+        const casesObjFlatted = getFlattedCases('', casesObj);
+
+        let cases: MockCase[] = Object.values(casesObjFlatted);
         cases = cases.filter(item => item instanceof MockCase); // just load which export case
         MockCaseServer.loadCases(cases);
         console.log(chalk.green('Load all cases in ./cases!'));

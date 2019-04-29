@@ -136,6 +136,22 @@ Every `Change` can contains these four fileds. When filed `transferTo` provided,
 - A: make sure your NODE_PATH rights. (`npm root -g` shows global root)
 
 ## changeLog
+- 0.0.10
+    - cases 下可以包含目录（比如按页面拆分 case）
+___
+- 0.0.10
+    - you can put dirs in `cases`, e.g.
+```
+-cases
+    -page1
+        -case1.js
+        -case2.js
+    -page2
+        -case1.js
+        -case2.js
+    ...
+```
+
 - 0.0.9
     - bugfixs
 

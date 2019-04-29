@@ -147,6 +147,19 @@ var server_1 = __importDefault(require("./server"));
 var log_1 = require("./log");
 var utils_1 = require("./utils");
 var MCS_1 = __importStar(require("./MCS"));
+function getFlattedCases(dirname, casesObj) {
+    if (dirname === void 0) { dirname = ''; }
+    var o = {};
+    for (var filename in casesObj) {
+        if (/.+\.js$/.test(filename)) {
+            o[dirname + filename] = casesObj[filename];
+        }
+        else {
+            o = __assign({}, o, getFlattedCases(filename + '/', casesObj[filename]));
+        }
+    }
+    return o;
+}
 function loadAllCases() {
     var oldIndex = cwd + "/index.js";
     try {
@@ -163,8 +176,13 @@ function loadAllCases() {
                 delete require.cache[key]; // 删除引用，方便重复加载
             }
         });
-        var casesObj = requireAll(casesPath_1);
-        var cases = Object.values(casesObj);
+        var casesObj = requireAll({
+            dirname: casesPath_1,
+            filter: /.+\.js$/,
+            recursive: true,
+        });
+        var casesObjFlatted = getFlattedCases('', casesObj);
+        var cases = Object.values(casesObjFlatted);
         cases = cases.filter(function (item) { return item instanceof MCS_1.MockCase; }); // just load which export case
         MCS_1.default.loadCases(cases);
         console.log(chalk_1.default.green('Load all cases in ./cases!'));
