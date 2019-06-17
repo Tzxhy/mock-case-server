@@ -1,6 +1,6 @@
 {
   "name": "mock-case-server",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "provide stateful mock data for tests",
   "main": "output/MCS.js",
   "scripts": {

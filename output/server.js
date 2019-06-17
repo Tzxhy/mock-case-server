@@ -113,19 +113,33 @@ server.use(function (ctx, next) {
     }
     return next();
 });
+function setResponseContentType(ctx, value) {
+    ctx.set('content-type', value || 'text/plain');
+}
 // 代理转发
 server.use(function (ctx, next) { return __awaiter(_this, void 0, void 0, function () {
-    var path, matchItem, data;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var path, matchItem, targetUrl, matches, key, res, _a, data;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
                 path = ctx.path;
                 matchItem = utils_1.getRouteByUrlPath(path, MCS_1.default.currentCase);
                 if (!(matchItem && matchItem.transferTo)) return [3 /*break*/, 2];
-                return [4 /*yield*/, axios_1.default.get(matchItem.transferTo)];
+                targetUrl = matchItem.transferTo;
+                if (matchItem.path instanceof url_pattern_1.default) { // 拼参数
+                    matches = matchItem.path.match(path);
+                    console.log('matches', matches);
+                    for (key in matches) {
+                        targetUrl = targetUrl.replace("{{" + key + "}}", matches[key]);
+                    }
+                }
+                return [4 /*yield*/, axios_1.default.get(targetUrl).catch(function (e) { return console.log(e); })];
             case 1:
-                data = (_a.sent()).data;
+                res = (_b.sent()) || { data: '', headers: '' };
+                _a = res.data, data = _a === void 0 ? {} : _a;
                 ctx.body = data;
+                // 设置响应头
+                setResponseContentType(ctx, res.headers['content-type']);
                 return [2 /*return*/];
             case 2: return [2 /*return*/, next()];
         }

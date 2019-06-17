@@ -73,13 +73,33 @@ server.use((ctx: ParameterizedContext, next: any) => { // 切换 case，以及�
     return next();
 });
 
+
+function setResponseContentType(ctx: ParameterizedContext, value: string) {
+    ctx.set('content-type', value || 'text/plain');
+}
+
 // 代理转发
 server.use(async (ctx: ParameterizedContext, next: any) => {
     const path = ctx.path;
     const matchItem = getRouteByUrlPath(path, MockCaseServer.currentCase);
     if (matchItem && matchItem.transferTo) {
-        const {data} = await axios.get(matchItem.transferTo);
+        let targetUrl = matchItem.transferTo;
+        if (matchItem.path instanceof UrlPattern) { // 拼参数
+            const matches = matchItem.path.match(path);
+            console.log('matches', matches);
+            
+            for (const key in matches) {
+                targetUrl = targetUrl.replace(`{{${key}}}`, matches[key]);
+            }
+        }
+        const res = (await axios.get(targetUrl).catch(e => console.log(e))) || {data: '', headers: ''} ;
+        const {
+            data = {},
+        } = res;
+        
         ctx.body = data;
+        // 设置响应头
+        setResponseContentType(ctx, res.headers['content-type']);
         return;
     }
     return next();

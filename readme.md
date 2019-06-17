@@ -136,6 +136,26 @@ Every `Change` can contains these four fileds. When filed `transferTo` provided,
 - A: make sure your NODE_PATH rights. (`npm root -g` shows global root)
 
 ## changeLog
+- 0.0.11
+    - 增加代理请求的响应头回送
+    - 增加 addRoute 时可带参(该方式不支持生成正确的 charles map 文件，只支持 mcs start -o 启动浏览器方式)。如
+```js
+myCase.addRoute({
+    path: new UrpPattern('/(:hotId).hot-update.json'),
+    transferTo: 'http://localhost:10010/{{hotId}}.hot-update.json',
+});
+```
+___
+- 0.0.11
+    - fix proxy response correct content-type
+    - when using addRoute, you can set template paramters(only supported with `mcs start -o`, not charles)E.g.
+```js
+myCase.addRoute({
+    path: new UrpPattern('/path/to/your/(:hotId).hot-update.json'),
+    transferTo: 'http://localhost:10010/{{hotId}}.hot-update.json',
+});
+```
+
 - 0.0.10
     - cases 下可以包含目录（比如按页面拆分 case）
 ___

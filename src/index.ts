@@ -109,10 +109,14 @@ function loadAllCases() {
     } catch (e) { // no exists of old version's entry index.js
         const requireAll = require('require-all');
         const casesPath = path.join(cwd, 'cases');
+        const responsesPath = path.join(cwd, 'responses');
         const cachedKeys = Object.keys(require.cache);
         cachedKeys.forEach(key => {
             if (key.indexOf(casesPath) !== -1) { // 用户 cases 目录
                 delete require.cache[key]; // 删除引用，方便重复加载
+            }
+            if (key.indexOf(responsesPath) !== -1) {
+                delete require.cache[key];
             }
         });
 
@@ -163,9 +167,9 @@ function startServer() {
         watchCases();
     }
     if (process.env.open) {
-        if (googleChrome) {
-            googleChrome.kill();
-        }
+        // if (googleChrome) {
+        //     googleChrome.kill();
+        // }
         try {
             openBrowser(port);
         } catch (err) {
@@ -180,7 +184,7 @@ function startServer() {
     });
     return netServer;
 }
-let googleChrome: childProcess.ChildProcess;
+let googleChrome: childProcess.ChildProcess | null;
 async function openBrowser(port: string) {
     const target = getEnvKeyValue('target');
     try {
@@ -188,18 +192,19 @@ async function openBrowser(port: string) {
     } catch (e) {
         execSync(`mkdir -p ~/.mcs/cache`); // 不存在则创建
     }
-    // --incognito
-    googleChrome = exec(`/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --user-data-dir="$HOME/.mcs/cache" --proxy-pac-url="http://127.0.0.1:${port}/pac.pac" --proxy-bypass-list="<local>" --lang=local ${target}`);
+    googleChrome = exec(`/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --unsafe-pac-url="http://127.0.0.1:${port}/pac.pac" --ignore-certificate-errors --ignore-urlfetcher-cert-requests --disable-machine-cert-request --start-fullscreen --user-data-dir="$HOME/.mcs/cache" --proxy-pac-url="http://127.0.0.1:${port}/pac.pac" --proxy-bypass-list="<local>" --lang=local ${target}`);
 }
 
 function generagePac({
     proxyAddr,
     proxyMaps,
     proxyPaths,
+    regPaths,
 }: {
     proxyAddr: string,
     proxyMaps: [],
-    proxyPaths: any[],
+    proxyPaths: string[],
+    regPaths: string[],
 }) {
     let file = fs.readFileSync(path.resolve(__dirname, 'file-templates', 'pac.template.pac'), {
         encoding: 'utf8',
@@ -207,7 +212,8 @@ function generagePac({
     file = file
         .replace('{{PROXY_PATHS}}', JSON.stringify(proxyPaths))
         .replace('{{MAP}}', JSON.stringify(proxyMaps))
-        .replace('{{PROXY_ADDR}}', proxyAddr);
+        .replace('{{PROXY_ADDR}}', proxyAddr)
+        .replace('{{REG_PATHS}}', JSON.stringify(regPaths));
     fs.writeFileSync(path.resolve('pac.pac'), file);
 }
 
@@ -224,6 +230,10 @@ function watchCases() {
                 startServer();
             }, 100);
         });
+        if (googleChrome && googleChrome.killed === false) {
+            googleChrome.kill();
+            googleChrome = null;
+        }
     }
     watch.createMonitor(path.resolve('cases'), function (monitor: any) {
         monitor.on("created", function () {
@@ -246,14 +256,16 @@ function generateResource() {
     }
     const xml = require('xml');
     const xmlArray: any = [];
-    const proxyPaths: any[] = [];
+    const proxyPaths: string[] = [];
+    const regPaths: string[] = [];
     const proxyMaps: any = {};
     const proxyAddr = `127.0.0.1:${port}`;
     (MockCaseServer.cases || []).forEach((caseItem: MockCase) => {
         getCollectionWithMatchesAndRoute(caseItem).forEach((change: Change | Route) => {
-            let path;
+            let path = '';
             if (typeof change.path === 'string') {
                 path = change.path;
+                proxyPaths.push(path as string); // 添加命中的 path
             } else {
                 const urlPattern: any = change.path;
                 urlPattern.ast.every((tag: any) => {
@@ -262,8 +274,9 @@ function generateResource() {
                         return false;
                     }
                 });
+                regPaths.push(path);
+                path += '*'; // 生成包含*的 charles 对应项
             }
-            proxyPaths.push(path as string); // 添加命中的 path
             const data: any = {
                 mapMapping: [
                     {
@@ -337,6 +350,7 @@ function generateResource() {
         proxyAddr,
         proxyMaps,
         proxyPaths,
+        regPaths,
     });
 }
 

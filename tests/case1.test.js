@@ -4,6 +4,7 @@ const {startServer, killServer, initServerDir, clearServerDir} = require('./comm
 const assert = require('assert');
 const axios = require('axios');
 describe('初始状态下测试(just one case)', function () {
+    this.timeout(10000);
     before(() => {
         initServerDir();
         return startServer();

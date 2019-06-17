@@ -4,12 +4,16 @@ const {startServer, killServer, initServerDir, clearServerDir, runCommand} = req
 const assert = require('assert');
 const axios = require('axios');
 describe('多个测试 multi case', function () {
+    this.timeout(10000);
     before(() => {
+        console.log('before');
+        
         initServerDir('-p 9999 -h mp.toutiao.com');
         runCommand(`mcs new case2`);
         return startServer();
     });
     after(() => {
+        console.log('before');
         clearServerDir();
         return killServer();
     });

@@ -170,10 +170,14 @@ function loadAllCases() {
     catch (e) { // no exists of old version's entry index.js
         var requireAll = require('require-all');
         var casesPath_1 = path.join(cwd, 'cases');
+        var responsesPath_1 = path.join(cwd, 'responses');
         var cachedKeys = Object.keys(require.cache);
         cachedKeys.forEach(function (key) {
             if (key.indexOf(casesPath_1) !== -1) { // 用户 cases 目录
                 delete require.cache[key]; // 删除引用，方便重复加载
+            }
+            if (key.indexOf(responsesPath_1) !== -1) {
+                delete require.cache[key];
             }
         });
         var casesObj = requireAll({
@@ -218,9 +222,9 @@ function startServer() {
         watchCases();
     }
     if (process.env.open) {
-        if (googleChrome) {
-            googleChrome.kill();
-        }
+        // if (googleChrome) {
+        //     googleChrome.kill();
+        // }
         try {
             openBrowser(port);
         }
@@ -249,21 +253,21 @@ function openBrowser(port) {
             catch (e) {
                 execSync("mkdir -p ~/.mcs/cache"); // 不存在则创建
             }
-            // --incognito
-            googleChrome = exec("/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --user-data-dir=\"$HOME/.mcs/cache\" --proxy-pac-url=\"http://127.0.0.1:" + port + "/pac.pac\" --proxy-bypass-list=\"<local>\" --lang=local " + target);
+            googleChrome = exec("/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --unsafe-pac-url=\"http://127.0.0.1:" + port + "/pac.pac\" --ignore-certificate-errors --ignore-urlfetcher-cert-requests --disable-machine-cert-request --start-fullscreen --user-data-dir=\"$HOME/.mcs/cache\" --proxy-pac-url=\"http://127.0.0.1:" + port + "/pac.pac\" --proxy-bypass-list=\"<local>\" --lang=local " + target);
             return [2 /*return*/];
         });
     });
 }
 function generagePac(_a) {
-    var proxyAddr = _a.proxyAddr, proxyMaps = _a.proxyMaps, proxyPaths = _a.proxyPaths;
+    var proxyAddr = _a.proxyAddr, proxyMaps = _a.proxyMaps, proxyPaths = _a.proxyPaths, regPaths = _a.regPaths;
     var file = fs_1.default.readFileSync(path.resolve(__dirname, 'file-templates', 'pac.template.pac'), {
         encoding: 'utf8',
     });
     file = file
         .replace('{{PROXY_PATHS}}', JSON.stringify(proxyPaths))
         .replace('{{MAP}}', JSON.stringify(proxyMaps))
-        .replace('{{PROXY_ADDR}}', proxyAddr);
+        .replace('{{PROXY_ADDR}}', proxyAddr)
+        .replace('{{REG_PATHS}}', JSON.stringify(regPaths));
     fs_1.default.writeFileSync(path.resolve('pac.pac'), file);
 }
 function watchCases() {
@@ -279,6 +283,10 @@ function watchCases() {
                 startServer();
             }, 100);
         });
+        if (googleChrome && googleChrome.killed === false) {
+            googleChrome.kill();
+            googleChrome = null;
+        }
     };
     watch.createMonitor(path.resolve('cases'), function (monitor) {
         monitor.on("created", function () {
@@ -301,13 +309,15 @@ function generateResource() {
     var xml = require('xml');
     var xmlArray = [];
     var proxyPaths = [];
+    var regPaths = [];
     var proxyMaps = {};
     var proxyAddr = "127.0.0.1:" + port;
     (MCS_1.default.cases || []).forEach(function (caseItem) {
         utils_1.getCollectionWithMatchesAndRoute(caseItem).forEach(function (change) {
-            var path;
+            var path = '';
             if (typeof change.path === 'string') {
                 path = change.path;
+                proxyPaths.push(path); // 添加命中的 path
             }
             else {
                 var urlPattern = change.path;
@@ -317,8 +327,9 @@ function generateResource() {
                         return false;
                     }
                 });
+                regPaths.push(path);
+                path += '*'; // 生成包含*的 charles 对应项
             }
-            proxyPaths.push(path); // 添加命中的 path
             var data = {
                 mapMapping: [
                     {
@@ -379,6 +390,7 @@ function generateResource() {
         proxyAddr: proxyAddr,
         proxyMaps: proxyMaps,
         proxyPaths: proxyPaths,
+        regPaths: regPaths,
     });
 }
 function newCase(name) {
