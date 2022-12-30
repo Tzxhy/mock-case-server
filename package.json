@@ -41,7 +41,7 @@
   "devDependencies": {
     "@types/koa": "^2.0.48",
     "@types/koa-bodyparser": "^4.2.2",
-    "mocha": "^6.1.4",
+    "mocha": "^10.2.0",
     "typescript": "^3.4.3"
   },
   "directories": {
